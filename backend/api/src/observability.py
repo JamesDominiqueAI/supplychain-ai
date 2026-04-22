@@ -1,9 +1,19 @@
 from __future__ import annotations
 
+import json
+import logging
 from collections import defaultdict, deque
 from statistics import mean
 from threading import Lock
 from typing import Any
+
+logger = logging.getLogger("supplychain_ai.api")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
 
 
 class RequestMetrics:
@@ -48,6 +58,40 @@ class RequestMetrics:
                 "requests_by_route": dict(sorted(self._requests_by_route.items())),
                 "server_errors_by_route": dict(sorted(self._errors_by_route.items())),
             }
+
+
+def log_request_event(
+    *,
+    method: str,
+    path: str,
+    status_code: int,
+    latency_ms: float,
+    request_id: str | None = None,
+    origin: str | None = None,
+    error_type: str | None = None,
+    error_message: str | None = None,
+) -> dict[str, Any]:
+    """Emit one structured request log line without secrets, tokens, or bodies."""
+
+    event: dict[str, Any] = {
+        "event": "api_request",
+        "method": method.upper(),
+        "path": path,
+        "status_code": status_code,
+        "status_bucket": f"{status_code // 100}xx",
+        "latency_ms": round(latency_ms, 2),
+    }
+    if request_id:
+        event["request_id"] = request_id
+    if origin:
+        event["origin"] = origin
+    if error_type:
+        event["error_type"] = error_type
+    if error_message:
+        event["error_message"] = error_message[:240]
+
+    logger.info(json.dumps(event, sort_keys=True))
+    return event
 
 
 def summarize_ai_audit_logs(audit_logs: list[Any]) -> dict[str, Any]:

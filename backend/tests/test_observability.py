@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import types
 import unittest
+from unittest.mock import patch
 
 from backend.tests.test_support import reset_fake_environment
 
@@ -9,9 +10,10 @@ from backend.tests.test_support import reset_fake_environment
 class ObservabilityTests(unittest.TestCase):
     def setUp(self) -> None:
         reset_fake_environment()
-        from src.observability import RequestMetrics, summarize_ai_audit_logs
+        from src.observability import RequestMetrics, log_request_event, summarize_ai_audit_logs
 
         self.RequestMetrics = RequestMetrics
+        self.log_request_event = log_request_event
         self.summarize_ai_audit_logs = summarize_ai_audit_logs
 
     def test_request_metrics_tracks_latency_and_error_rate(self) -> None:
@@ -27,6 +29,30 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual(snapshot["status_counts"]["2xx"], 1)
         self.assertEqual(snapshot["status_counts"]["5xx"], 1)
         self.assertEqual(snapshot["server_errors_by_route"]["GET /api/reports"], 1)
+
+    def test_structured_request_log_redacts_and_truncates_error_details(self) -> None:
+        long_message = "x" * 300
+
+        with patch("src.observability.logger.info") as logger_info:
+            event = self.log_request_event(
+                method="get",
+                path="/api/products",
+                status_code=500,
+                latency_ms=12.345,
+                request_id="Root=1-test",
+                origin="https://example.com",
+                error_type="RuntimeError",
+                error_message=long_message,
+            )
+
+        self.assertEqual(event["event"], "api_request")
+        self.assertEqual(event["method"], "GET")
+        self.assertEqual(event["path"], "/api/products")
+        self.assertEqual(event["status_bucket"], "5xx")
+        self.assertEqual(event["latency_ms"], 12.35)
+        self.assertEqual(len(event["error_message"]), 240)
+        logger_info.assert_called_once()
+        self.assertIn('"event": "api_request"', logger_info.call_args.args[0])
 
     def test_ai_audit_summary_tracks_success_fallback_and_tokens(self) -> None:
         logs = [

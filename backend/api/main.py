@@ -36,7 +36,7 @@ from src import (
     CreateSupplierRequest,
     UpdatePurchaseOrderStatusRequest,
 )
-from src.observability import request_metrics, summarize_ai_audit_logs
+from src.observability import log_request_event, request_metrics, summarize_ai_audit_logs
 
 load_dotenv(override=True)
 
@@ -71,17 +71,34 @@ app.add_middleware(
 async def collect_request_metrics(request: Request, call_next):
     start = time.perf_counter()
     status_code = 500
+    error_type = None
+    error_message = None
     try:
         response = await call_next(request)
         status_code = response.status_code
         return response
+    except Exception as exc:
+        error_type = type(exc).__name__
+        error_message = str(exc)
+        raise
     finally:
         latency_ms = (time.perf_counter() - start) * 1000
+        path = request.url.path
         request_metrics.record(
             method=request.method,
-            path=request.url.path,
+            path=path,
             status_code=status_code,
             latency_ms=latency_ms,
+        )
+        log_request_event(
+            method=request.method,
+            path=path,
+            status_code=status_code,
+            latency_ms=latency_ms,
+            request_id=request.headers.get("x-amzn-trace-id") or request.headers.get("x-request-id"),
+            origin=request.headers.get("origin"),
+            error_type=error_type,
+            error_message=error_message,
         )
 
 
