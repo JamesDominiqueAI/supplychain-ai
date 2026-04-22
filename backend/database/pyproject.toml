@@ -1,0 +1,10 @@
+[project]
+name = "supplychain-database"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "boto3>=1.39.0",
+  "openai>=1.107.0",
+  "PyJWT>=2.10.1",
+  "pydantic>=2.11.7",
+]

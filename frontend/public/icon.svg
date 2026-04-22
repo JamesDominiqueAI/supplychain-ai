@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>SupplyChain AI</title>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b3d34" />
+      <stop offset="100%" stop-color="#1f8b78" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#bg)" />
+  <path
+    d="M18 20h15c7 0 11 3 11 8 0 3-2 5-5 6 4 1 7 4 7 8 0 6-5 10-13 10H18V20zm13 12c4 0 6-1 6-4s-2-4-6-4h-6v8h6zm1 16c5 0 7-2 7-5s-3-5-8-5h-6v10h7z"
+    fill="#f5f1e8"
+  />
+</svg>

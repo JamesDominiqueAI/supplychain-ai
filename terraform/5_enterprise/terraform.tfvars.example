@@ -1,0 +1,8 @@
+aws_region                     = "us-east-1"
+project_name                   = "supplychain-ai"
+alarm_email                    = ""
+cloudfront_distribution_id     = ""
+api_gateway_id                 = ""
+lambda_function_name           = ""
+cloudfront_5xx_alarm_threshold = 1
+lambda_error_alarm_threshold   = 1
