@@ -45,11 +45,14 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
+      - name: Install backend workspace dependencies
+        run: UV_CACHE_DIR=/tmp/uv-cache uv sync --all-packages
+
       - name: Run backend tests
-        run: UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover backend/tests
+        run: UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python -m unittest discover backend/tests
 
       - name: Run deterministic evaluation
-        run: UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/evaluate_project.py
+        run: UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/evaluate_project.py
 
       - name: Set up Node
         uses: actions/setup-node@v4
