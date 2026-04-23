@@ -51,7 +51,117 @@ ensure_dynamodb_table_in_state() {
   fi
 }
 
+terraform_state_has() {
+  local tf_dir="$1"
+  local resource_address="$2"
+  terraform -chdir="$tf_dir" state show "$resource_address" >/dev/null 2>&1
+}
+
+terraform_import_if_missing() {
+  local tf_dir="$1"
+  local resource_address="$2"
+  local import_id="$3"
+
+  if terraform_state_has "$tf_dir" "$resource_address"; then
+    return 0
+  fi
+
+  echo "Terraform state is missing ${resource_address}; importing existing resource ${import_id}..."
+  terraform -chdir="$tf_dir" import "$resource_address" "$import_id"
+}
+
+ensure_frontend_api_resources_in_state() {
+  local tf_dir="$1"
+  local bucket_name="$2"
+  local name_prefix="$3"
+  local role_name="${name_prefix}-api-lambda-role"
+  local role_policy_name="${name_prefix}-api-lambda-dynamodb"
+  local lambda_name="${name_prefix}-api"
+  local api_name="${name_prefix}-api-gateway"
+  local oac_name="${name_prefix}-frontend-oac"
+  local basic_role_policy_arn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+
+  if aws s3api head-bucket --bucket "$bucket_name" --region "$AWS_REGION" >/dev/null 2>&1; then
+    terraform_import_if_missing "$tf_dir" aws_s3_bucket.frontend "$bucket_name"
+    terraform_import_if_missing "$tf_dir" aws_s3_bucket_public_access_block.frontend "$bucket_name"
+    terraform_import_if_missing "$tf_dir" aws_s3_bucket_versioning.frontend "$bucket_name"
+    terraform_import_if_missing "$tf_dir" aws_s3_bucket_server_side_encryption_configuration.frontend "$bucket_name"
+    terraform_import_if_missing "$tf_dir" aws_s3_bucket_website_configuration.frontend "$bucket_name"
+    terraform_import_if_missing "$tf_dir" aws_s3_bucket_policy.frontend "$bucket_name"
+  fi
+
+  local oac_id
+  oac_id="$(aws cloudfront list-origin-access-controls \
+    --query "OriginAccessControlList.Items[?Name=='${oac_name}'].Id | [0]" \
+    --output text 2>/dev/null || true)"
+  if [[ -n "$oac_id" && "$oac_id" != "None" ]]; then
+    terraform_import_if_missing "$tf_dir" aws_cloudfront_origin_access_control.frontend "$oac_id"
+  fi
+
+  local distribution_id
+  distribution_id="$(aws cloudfront list-distributions \
+    --query "DistributionList.Items[?Comment=='${name_prefix} frontend CDN'].Id | [0]" \
+    --output text 2>/dev/null || true)"
+  if [[ -n "$distribution_id" && "$distribution_id" != "None" ]]; then
+    terraform_import_if_missing "$tf_dir" aws_cloudfront_distribution.frontend "$distribution_id"
+  fi
+
+  if aws iam get-role --role-name "$role_name" >/dev/null 2>&1; then
+    terraform_import_if_missing "$tf_dir" 'aws_iam_role.api_lambda[0]' "$role_name"
+    if aws iam list-attached-role-policies --role-name "$role_name" \
+      --query "AttachedPolicies[?PolicyArn=='${basic_role_policy_arn}'].PolicyArn | [0]" \
+      --output text 2>/dev/null | grep -q '^arn:'; then
+      terraform_import_if_missing "$tf_dir" 'aws_iam_role_policy_attachment.api_lambda_basic[0]' "${role_name}/${basic_role_policy_arn}"
+    fi
+    if aws iam get-role-policy --role-name "$role_name" --policy-name "$role_policy_name" >/dev/null 2>&1; then
+      terraform_import_if_missing "$tf_dir" 'aws_iam_role_policy.api_lambda_dynamodb[0]' "${role_name}:${role_policy_name}"
+    fi
+  fi
+
+  if aws lambda get-function --function-name "$lambda_name" --region "$AWS_REGION" >/dev/null 2>&1; then
+    terraform_import_if_missing "$tf_dir" 'aws_lambda_function.api[0]' "$lambda_name"
+    if aws lambda get-policy --function-name "$lambda_name" --region "$AWS_REGION" \
+      --query "Policy" --output text 2>/dev/null | grep -q 'AllowExecutionFromApiGateway'; then
+      terraform_import_if_missing "$tf_dir" 'aws_lambda_permission.api_gateway[0]' "${lambda_name}/AllowExecutionFromApiGateway"
+    fi
+  fi
+
+  local api_id
+  api_id="$(aws apigatewayv2 get-apis \
+    --query "Items[?Name=='${api_name}'].ApiId | [0]" \
+    --output text 2>/dev/null || true)"
+  if [[ -n "$api_id" && "$api_id" != "None" ]]; then
+    terraform_import_if_missing "$tf_dir" 'aws_apigatewayv2_api.main[0]' "$api_id"
+
+    local integration_id
+    integration_id="$(aws apigatewayv2 get-integrations --api-id "$api_id" \
+      --query 'Items[0].IntegrationId' --output text 2>/dev/null || true)"
+    if [[ -n "$integration_id" && "$integration_id" != "None" ]]; then
+      terraform_import_if_missing "$tf_dir" 'aws_apigatewayv2_integration.lambda[0]' "${api_id}/${integration_id}"
+    fi
+
+    local proxy_route_id
+    proxy_route_id="$(aws apigatewayv2 get-routes --api-id "$api_id" \
+      --query "Items[?RouteKey=='ANY /{proxy+}'].RouteId | [0]" --output text 2>/dev/null || true)"
+    if [[ -n "$proxy_route_id" && "$proxy_route_id" != "None" ]]; then
+      terraform_import_if_missing "$tf_dir" 'aws_apigatewayv2_route.proxy[0]' "${api_id}/${proxy_route_id}"
+    fi
+
+    local root_route_id
+    root_route_id="$(aws apigatewayv2 get-routes --api-id "$api_id" \
+      --query "Items[?RouteKey=='ANY /'].RouteId | [0]" --output text 2>/dev/null || true)"
+    if [[ -n "$root_route_id" && "$root_route_id" != "None" ]]; then
+      terraform_import_if_missing "$tf_dir" 'aws_apigatewayv2_route.root[0]' "${api_id}/${root_route_id}"
+    fi
+
+    if aws apigatewayv2 get-stage --api-id "$api_id" --stage-name '$default' >/dev/null 2>&1; then
+      terraform_import_if_missing "$tf_dir" 'aws_apigatewayv2_stage.default[0]' "${api_id}/\$default"
+    fi
+  fi
+}
+
 echo "Deploying ${PROJECT_NAME} to AWS region ${AWS_REGION}."
+AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}"
 echo "Packaging backend Lambda..."
 (
   cd "$ROOT_DIR/backend/api"
@@ -73,6 +183,7 @@ echo "Applying frontend/API layer..."
 (
   cd "$ROOT_DIR/terraform/4_frontend"
   terraform init -input=false
+  ensure_frontend_api_resources_in_state "$PWD" "${PROJECT_NAME}-frontend-${AWS_ACCOUNT_ID}" "$PROJECT_NAME"
   TF_VAR_openai_api_key="${OPENAI_API_KEY}" \
   TF_VAR_resend_api_key="${RESEND_API_KEY}" \
   terraform apply -auto-approve \
