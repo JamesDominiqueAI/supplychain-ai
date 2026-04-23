@@ -141,3 +141,31 @@ bash scripts/deploy_aws.sh
 ```
 
 If AWS blocks the deployment because of IAM permissions, see [guides/9_aws_deployment_runbook.md](guides/9_aws_deployment_runbook.md).
+
+## CI/CD
+
+GitHub Actions runs backend tests, deterministic AI evaluation scenarios, and the frontend build on pull requests and pushes to `main`.
+Pushes to `main` deploy to AWS after CI passes. Manual workflow runs can redeploy any branch, tag, or commit SHA; use that same `git_ref` input to roll back by redeploying an older known-good commit.
+
+Required GitHub secrets:
+
+```text
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
+DEFAULT_AWS_REGION
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+CLERK_SECRET_KEY
+CLERK_JWKS_URL
+CLERK_ISSUER
+OPENAI_API_KEY
+RESEND_API_KEY
+RESEND_FROM_EMAIL
+```
+
+Optional secrets:
+
+```text
+ALARM_EMAIL
+DYNAMODB_TABLE_NAME
+OPENAI_MODEL
+```
