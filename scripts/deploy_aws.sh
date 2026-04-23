@@ -37,6 +37,20 @@ done
 unset NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL
 unset NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL
 
+ensure_dynamodb_table_in_state() {
+  local tf_dir="$1"
+  local table_name="$2"
+
+  if terraform -chdir="$tf_dir" state show aws_dynamodb_table.workspace >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if aws dynamodb describe-table --table-name "$table_name" --region "$AWS_REGION" >/dev/null 2>&1; then
+    echo "Terraform state is missing DynamoDB table ${table_name}; importing existing table..."
+    terraform -chdir="$tf_dir" import aws_dynamodb_table.workspace "$table_name"
+  fi
+}
+
 echo "Deploying ${PROJECT_NAME} to AWS region ${AWS_REGION}."
 echo "Packaging backend Lambda..."
 (
@@ -48,6 +62,7 @@ echo "Applying DynamoDB layer..."
 (
   cd "$ROOT_DIR/terraform/2_database"
   terraform init -input=false
+  ensure_dynamodb_table_in_state "$PWD" "$DYNAMODB_TABLE_NAME"
   terraform apply -auto-approve \
     -var="aws_region=${AWS_REGION}" \
     -var="project_name=${PROJECT_NAME}" \

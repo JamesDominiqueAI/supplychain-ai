@@ -140,6 +140,9 @@ For AWS deployment, use:
 bash scripts/deploy_aws.sh
 ```
 
+The deploy script will automatically import an existing DynamoDB workspace table into Terraform state
+if the table already exists in AWS but is missing from the local Terraform state.
+
 If AWS blocks the deployment because of IAM permissions, see [guides/9_aws_deployment_runbook.md](guides/9_aws_deployment_runbook.md).
 
 ## CI/CD
