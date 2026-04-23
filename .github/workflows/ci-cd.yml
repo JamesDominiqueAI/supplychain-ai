@@ -68,9 +68,10 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_YWRlcXVhdGUtY29uZG9yLTg1LmNsZXJrLmFjY291bnRzLmRldiQ' }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8010
+          NEXT_TELEMETRY_DISABLED: "1"
         run: npm run build
 
   deploy:
