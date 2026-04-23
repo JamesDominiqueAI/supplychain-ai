@@ -150,8 +150,7 @@ Pushes to `main` deploy to AWS after CI passes. Manual workflow runs can redeplo
 Required GitHub secrets:
 
 ```text
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
+AWS_ROLE_ARN
 DEFAULT_AWS_REGION
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 CLERK_SECRET_KEY
