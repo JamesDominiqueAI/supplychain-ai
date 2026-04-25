@@ -134,8 +134,12 @@ ensure_frontend_api_resources_in_state() {
 
   if aws lambda get-function --function-name "$lambda_name" --region "$AWS_REGION" >/dev/null 2>&1; then
     terraform_import_if_missing "$tf_dir" 'aws_lambda_function.api[0]' "$lambda_name" "${terraform_args[@]}"
+    local lambda_permission_target="${lambda_name}"
+    local lambda_policy_args=(--function-name "$lambda_name" --region "$AWS_REGION")
     if aws lambda get-alias --function-name "$lambda_name" --name "$lambda_alias_name" --region "$AWS_REGION" >/dev/null 2>&1; then
       terraform_import_if_missing "$tf_dir" 'aws_lambda_alias.api_live[0]' "${lambda_name}/${lambda_alias_name}" "${terraform_args[@]}"
+      lambda_permission_target="${lambda_name}:${lambda_alias_name}"
+      lambda_policy_args+=(--qualifier "$lambda_alias_name")
       if aws lambda get-provisioned-concurrency-config \
         --function-name "$lambda_name" \
         --qualifier "$lambda_alias_name" \
@@ -143,9 +147,9 @@ ensure_frontend_api_resources_in_state() {
         terraform_import_if_missing "$tf_dir" 'aws_lambda_provisioned_concurrency_config.api_live[0]' "${lambda_name}/${lambda_alias_name}" "${terraform_args[@]}"
       fi
     fi
-    if aws lambda get-policy --function-name "$lambda_name" --region "$AWS_REGION" \
+    if aws lambda get-policy "${lambda_policy_args[@]}" \
       --query "Policy" --output text 2>/dev/null | grep -q 'AllowExecutionFromApiGateway'; then
-      terraform_import_if_missing "$tf_dir" 'aws_lambda_permission.api_gateway[0]' "${lambda_name}/AllowExecutionFromApiGateway" "${terraform_args[@]}"
+      terraform_import_if_missing "$tf_dir" 'aws_lambda_permission.api_gateway[0]' "${lambda_permission_target}/AllowExecutionFromApiGateway" "${terraform_args[@]}"
     fi
   fi
 
