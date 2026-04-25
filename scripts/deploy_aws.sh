@@ -135,12 +135,12 @@ ensure_frontend_api_resources_in_state() {
   if aws lambda get-function --function-name "$lambda_name" --region "$AWS_REGION" >/dev/null 2>&1; then
     terraform_import_if_missing "$tf_dir" 'aws_lambda_function.api[0]' "$lambda_name" "${terraform_args[@]}"
     if aws lambda get-alias --function-name "$lambda_name" --name "$lambda_alias_name" --region "$AWS_REGION" >/dev/null 2>&1; then
-      terraform_import_if_missing "$tf_dir" 'aws_lambda_alias.api_live[0]' "${lambda_name}:${lambda_alias_name}" "${terraform_args[@]}"
+      terraform_import_if_missing "$tf_dir" 'aws_lambda_alias.api_live[0]' "${lambda_name}/${lambda_alias_name}" "${terraform_args[@]}"
       if aws lambda get-provisioned-concurrency-config \
         --function-name "$lambda_name" \
         --qualifier "$lambda_alias_name" \
         --region "$AWS_REGION" >/dev/null 2>&1; then
-        terraform_import_if_missing "$tf_dir" 'aws_lambda_provisioned_concurrency_config.api_live[0]' "${lambda_name}:${lambda_alias_name}" "${terraform_args[@]}"
+        terraform_import_if_missing "$tf_dir" 'aws_lambda_provisioned_concurrency_config.api_live[0]' "${lambda_name}/${lambda_alias_name}" "${terraform_args[@]}"
       fi
     fi
     if aws lambda get-policy --function-name "$lambda_name" --region "$AWS_REGION" \
