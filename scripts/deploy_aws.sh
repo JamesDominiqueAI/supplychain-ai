@@ -80,7 +80,7 @@ ensure_frontend_api_resources_in_state() {
     -var="aws_region=${AWS_REGION}"
     -var="project_name=${name_prefix}"
     -var="enable_api_lambda=true"
-    -var="api_lambda_provisioned_concurrency=1"
+    -var="api_lambda_provisioned_concurrency=0"
     -var="dynamodb_table_name=${DYNAMODB_TABLE_NAME}"
     -var="clerk_jwks_url=${CLERK_JWKS_URL}"
     -var="clerk_issuer=${CLERK_ISSUER}"
@@ -213,7 +213,7 @@ echo "Applying frontend/API layer..."
     -var="aws_region=${AWS_REGION}" \
     -var="project_name=${PROJECT_NAME}" \
     -var="enable_api_lambda=true" \
-    -var="api_lambda_provisioned_concurrency=1" \
+    -var="api_lambda_provisioned_concurrency=0" \
     -var="dynamodb_table_name=${DYNAMODB_TABLE_NAME}" \
     -var="clerk_jwks_url=${CLERK_JWKS_URL}" \
     -var="clerk_issuer=${CLERK_ISSUER}" \
