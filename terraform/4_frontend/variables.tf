@@ -64,6 +64,12 @@ variable "api_lambda_memory_size" {
   default     = 1024
 }
 
+variable "api_lambda_provisioned_concurrency" {
+  description = "Provisioned concurrency for the backend Lambda alias. Set to 0 to disable."
+  type        = number
+  default     = 0
+}
+
 variable "api_lambda_environment" {
   description = "Extra environment variables passed to the backend Lambda"
   type        = map(string)

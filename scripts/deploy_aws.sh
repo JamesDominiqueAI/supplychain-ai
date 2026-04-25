@@ -80,6 +80,7 @@ ensure_frontend_api_resources_in_state() {
     -var="aws_region=${AWS_REGION}"
     -var="project_name=${name_prefix}"
     -var="enable_api_lambda=true"
+    -var="api_lambda_provisioned_concurrency=1"
     -var="dynamodb_table_name=${DYNAMODB_TABLE_NAME}"
     -var="clerk_jwks_url=${CLERK_JWKS_URL}"
     -var="clerk_issuer=${CLERK_ISSUER}"
@@ -89,6 +90,7 @@ ensure_frontend_api_resources_in_state() {
   local role_name="${name_prefix}-api-lambda-role"
   local role_policy_name="${name_prefix}-api-lambda-dynamodb"
   local lambda_name="${name_prefix}-api"
+  local lambda_alias_name="live"
   local api_name="${name_prefix}-api-gateway"
   local oac_name="${name_prefix}-frontend-oac"
   local basic_role_policy_arn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
@@ -132,6 +134,15 @@ ensure_frontend_api_resources_in_state() {
 
   if aws lambda get-function --function-name "$lambda_name" --region "$AWS_REGION" >/dev/null 2>&1; then
     terraform_import_if_missing "$tf_dir" 'aws_lambda_function.api[0]' "$lambda_name" "${terraform_args[@]}"
+    if aws lambda get-alias --function-name "$lambda_name" --name "$lambda_alias_name" --region "$AWS_REGION" >/dev/null 2>&1; then
+      terraform_import_if_missing "$tf_dir" 'aws_lambda_alias.api_live[0]' "${lambda_name}:${lambda_alias_name}" "${terraform_args[@]}"
+      if aws lambda get-provisioned-concurrency-config \
+        --function-name "$lambda_name" \
+        --qualifier "$lambda_alias_name" \
+        --region "$AWS_REGION" >/dev/null 2>&1; then
+        terraform_import_if_missing "$tf_dir" 'aws_lambda_provisioned_concurrency_config.api_live[0]' "${lambda_name}:${lambda_alias_name}" "${terraform_args[@]}"
+      fi
+    fi
     if aws lambda get-policy --function-name "$lambda_name" --region "$AWS_REGION" \
       --query "Policy" --output text 2>/dev/null | grep -q 'AllowExecutionFromApiGateway'; then
       terraform_import_if_missing "$tf_dir" 'aws_lambda_permission.api_gateway[0]' "${lambda_name}/AllowExecutionFromApiGateway" "${terraform_args[@]}"
@@ -202,6 +213,7 @@ echo "Applying frontend/API layer..."
     -var="aws_region=${AWS_REGION}" \
     -var="project_name=${PROJECT_NAME}" \
     -var="enable_api_lambda=true" \
+    -var="api_lambda_provisioned_concurrency=1" \
     -var="dynamodb_table_name=${DYNAMODB_TABLE_NAME}" \
     -var="clerk_jwks_url=${CLERK_JWKS_URL}" \
     -var="clerk_issuer=${CLERK_ISSUER}" \

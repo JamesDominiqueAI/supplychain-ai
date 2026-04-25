@@ -11,34 +11,47 @@ import os
 import time
 from io import StringIO
 import csv
+from pathlib import Path
+import sys
 
-from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from src import (
-    DynamoDBStore,
-    OrderNotificationEvent,
+project_database_src = Path(__file__).resolve().parents[1] / "database" / "src"
+lambda_database_src = Path(__file__).resolve().parent / "database_src"
+api_src = Path(__file__).resolve().parent / "src"
+
+for candidate in (project_database_src, lambda_database_src, api_src):
+    if candidate.exists() and str(candidate) not in sys.path:
+        sys.path.insert(0, str(candidate))
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - optional in deployed Lambda bundle
+    load_dotenv = None
+
+from schemas import (
+    ChatRequest,
+    CreateInventoryMovementRequest,
+    CreateProductRequest,
+    CreatePurchaseOrderRequest,
+    CreateSupplierRequest,
     MorningBriefResponse,
+    OrderNotificationEvent,
+    ReceivePurchaseOrderRequest,
     ReportComparisonResponse,
     ScenarioAnalysisResponse,
     ScenarioRequest,
     TestNotificationResponse,
     UpdateBusinessSettingsRequest,
-    ChatRequest,
-    actor_id_from_request,
-    auth_debug_info,
-    CreateInventoryMovementRequest,
-    CreateProductRequest,
-    CreatePurchaseOrderRequest,
-    ReceivePurchaseOrderRequest,
-    CreateSupplierRequest,
     UpdatePurchaseOrderStatusRequest,
 )
-from src.observability import log_request_event, request_metrics, summarize_ai_audit_logs
+from auth import actor_id_from_request, auth_debug_info
+from observability import log_request_event, request_metrics, summarize_ai_audit_logs
 
-load_dotenv(override=True)
+if load_dotenv and not os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+    load_dotenv(override=True)
 
 app = FastAPI(
     title="SupplyChain AI API",
@@ -48,6 +61,8 @@ app = FastAPI(
 
 
 def get_store(actor_id: str = Depends(actor_id_from_request)) -> DynamoDBStore:
+    from dynamodb_store import DynamoDBStore
+
     return DynamoDBStore(owner_user_id=actor_id)
 
 
@@ -128,6 +143,20 @@ async def get_observability_metrics(store: DynamoDBStore = Depends(get_store)):
 @app.get("/api/business")
 async def get_business(store: DynamoDBStore = Depends(get_store)):
     return store.get_business()
+
+
+@app.get("/api/dashboard/summary")
+async def get_dashboard_summary(store: "DynamoDBStore" = Depends(get_store)):
+    reports = store.list_reports()
+    return {
+        "business": store.get_business(),
+        "inventory_health": store.inventory_health(),
+        "orders": store.list_orders(),
+        "latest_report": reports[0] if reports else None,
+        "forecasts": store.list_forecast_insights(),
+        "anomalies": store.list_anomaly_insights(),
+        "morning_brief": store.get_morning_brief(),
+    }
 
 
 @app.patch("/api/business/settings")

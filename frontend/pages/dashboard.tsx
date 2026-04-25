@@ -10,6 +10,7 @@ import {
   authorizedFetch,
   Business,
   ChatResponse,
+  DashboardSummaryResponse,
   ForecastInsight,
   InventoryHealthItem,
   MorningBriefResponse,
@@ -125,25 +126,19 @@ function OverviewPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [autoOrderMessage, setAutoOrderMessage] = useState<string | null>(null);
   const [autoOrdering, setAutoOrdering] = useState(false);
-  const businessQuery = useWorkspaceQuery<Business>(getToken, "/api/business");
-  const healthQuery = useWorkspaceQuery<InventoryHealthItem[]>(getToken, "/api/inventory/health");
-  const ordersQuery = useWorkspaceQuery<PurchaseOrder[]>(getToken, "/api/orders");
-  const reportsQuery = useWorkspaceQuery<Report[]>(getToken, "/api/reports");
-  const forecastsQuery = useWorkspaceQuery<ForecastInsight[]>(getToken, "/api/ai/forecast");
-  const anomaliesQuery = useWorkspaceQuery<AnomalyInsight[]>(getToken, "/api/ai/anomalies");
-  const briefQuery = useWorkspaceQuery<MorningBriefResponse>(getToken, "/api/ai/brief");
+  const summaryQuery = useWorkspaceQuery<DashboardSummaryResponse>(getToken, "/api/dashboard/summary");
 
-  const business = businessQuery.data;
-  const health = healthQuery.data || [];
-  const orders = ordersQuery.data || [];
-  const report = reportsQuery.data?.[0] || null;
-  const forecasts = forecastsQuery.data || [];
-  const anomalies = anomaliesQuery.data || [];
-  const morningBrief = briefQuery.data;
-  const loading = businessQuery.loading || healthQuery.loading || ordersQuery.loading || reportsQuery.loading;
-  const aiLoading = forecastsQuery.loading || anomaliesQuery.loading || briefQuery.loading;
-  const error = businessQuery.error || healthQuery.error || ordersQuery.error || reportsQuery.error;
-  const aiError = forecastsQuery.error || anomaliesQuery.error || briefQuery.error;
+  const business = summaryQuery.data?.business || null;
+  const health = summaryQuery.data?.inventory_health || [];
+  const orders = summaryQuery.data?.orders || [];
+  const report = summaryQuery.data?.latest_report || null;
+  const forecasts = summaryQuery.data?.forecasts || [];
+  const anomalies = summaryQuery.data?.anomalies || [];
+  const morningBrief = summaryQuery.data?.morning_brief || null;
+  const loading = summaryQuery.loading;
+  const aiLoading = summaryQuery.loading;
+  const error = summaryQuery.error;
+  const aiError = summaryQuery.error;
 
   const critical = health.filter((item) => item.risk_level === "critical").length;
   const watch = health.filter((item) => item.risk_level !== "critical" && item.risk_level !== "healthy").length;
@@ -175,7 +170,7 @@ function OverviewPage() {
         },
       });
       setAutoOrderMessage(result.summary);
-      await Promise.all([ordersQuery.revalidate(), anomaliesQuery.revalidate(), reportsQuery.revalidate(), briefQuery.revalidate()]);
+      await summaryQuery.revalidate();
     } finally {
       setAutoOrdering(false);
     }

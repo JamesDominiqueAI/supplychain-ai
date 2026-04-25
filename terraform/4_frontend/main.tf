@@ -242,6 +242,7 @@ resource "aws_lambda_function" "api" {
   memory_size      = var.api_lambda_memory_size
   architectures    = ["x86_64"]
   tags             = local.common_tags
+  publish          = true
 
   environment {
     variables = merge(
@@ -272,6 +273,22 @@ resource "aws_lambda_function" "api" {
   }
 }
 
+resource "aws_lambda_alias" "api_live" {
+  count            = var.enable_api_lambda ? 1 : 0
+  name             = "live"
+  description      = "Stable alias for API Gateway and provisioned concurrency"
+  function_name    = aws_lambda_function.api[0].function_name
+  function_version = aws_lambda_function.api[0].version
+}
+
+resource "aws_lambda_provisioned_concurrency_config" "api_live" {
+  count = var.enable_api_lambda && var.api_lambda_provisioned_concurrency > 0 ? 1 : 0
+
+  function_name                     = aws_lambda_function.api[0].function_name
+  qualifier                         = aws_lambda_alias.api_live[0].name
+  provisioned_concurrent_executions = var.api_lambda_provisioned_concurrency
+}
+
 resource "aws_apigatewayv2_api" "main" {
   count         = var.enable_api_lambda ? 1 : 0
   name          = "${local.name_prefix}-api-gateway"
@@ -294,7 +311,7 @@ resource "aws_apigatewayv2_integration" "lambda" {
   count                  = var.enable_api_lambda ? 1 : 0
   api_id                 = aws_apigatewayv2_api.main[0].id
   integration_type       = "AWS_PROXY"
-  integration_uri        = aws_lambda_function.api[0].invoke_arn
+  integration_uri        = aws_lambda_alias.api_live[0].invoke_arn
   payload_format_version = "2.0"
 }
 
@@ -324,7 +341,7 @@ resource "aws_lambda_permission" "api_gateway" {
   count         = var.enable_api_lambda ? 1 : 0
   statement_id  = "AllowExecutionFromApiGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.api[0].function_name
+  function_name = aws_lambda_alias.api_live[0].arn
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main[0].execution_arn}/*/*"
 }

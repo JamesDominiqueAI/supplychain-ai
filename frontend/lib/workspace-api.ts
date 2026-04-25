@@ -26,6 +26,9 @@ interface WorkspaceQueryOptions {
 }
 
 function cachePolicyForPath(path: string): CachePolicy {
+  if (path === "/api/dashboard/summary") {
+    return { freshMs: 12_000, maxAgeMs: 75_000 };
+  }
   if (path === "/api/business") {
     return { freshMs: 60_000, maxAgeMs: 5 * 60_000 };
   }
@@ -222,6 +225,16 @@ export interface MorningBriefResponse {
   priorities: string[];
   used_ai: boolean;
   confidence: "low" | "medium" | "high";
+}
+
+export interface DashboardSummaryResponse {
+  business: Business;
+  inventory_health: InventoryHealthItem[];
+  orders: PurchaseOrder[];
+  latest_report: Report | null;
+  forecasts: ForecastInsight[];
+  anomalies: AnomalyInsight[];
+  morning_brief: MorningBriefResponse;
 }
 
 export interface ScenarioAnalysisResponse {
@@ -444,10 +457,10 @@ function invalidateWorkspacePaths(paths: string[]): void {
 
 function invalidationPathsForMutation(path: string): string[] {
   if (path === "/api/products") {
-    return ["/api/products", "/api/inventory/health", "/api/ai/forecast", "/api/ai/anomalies", "/api/ai/brief"];
+    return ["/api/products", "/api/inventory/health", "/api/ai/forecast", "/api/ai/anomalies", "/api/ai/brief", "/api/dashboard/summary"];
   }
   if (path === "/api/inventory/movements") {
-    return ["/api/products", "/api/inventory/movements", "/api/inventory/health", "/api/ai/forecast", "/api/ai/anomalies", "/api/ai/brief"];
+    return ["/api/products", "/api/inventory/movements", "/api/inventory/health", "/api/ai/forecast", "/api/ai/anomalies", "/api/ai/brief", "/api/dashboard/summary"];
   }
   if (path.endsWith("/receive")) {
     return [
@@ -460,16 +473,17 @@ function invalidationPathsForMutation(path: string): string[] {
       "/api/ai/brief",
       "/api/notifications/orders",
       "/api/suppliers/scorecards",
+      "/api/dashboard/summary",
     ];
   }
   if (path === "/api/orders" || path.startsWith("/api/orders/")) {
-    return ["/api/orders", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/suppliers/scorecards"];
+    return ["/api/orders", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/suppliers/scorecards", "/api/dashboard/summary"];
   }
   if (path === "/api/suppliers" || path.startsWith("/api/suppliers/")) {
-    return ["/api/suppliers", "/api/suppliers/scorecards", "/api/products", "/api/orders"];
+    return ["/api/suppliers", "/api/suppliers/scorecards", "/api/products", "/api/orders", "/api/dashboard/summary"];
   }
   if (path === "/api/business/settings") {
-    return ["/api/business", "/api/ai/audit", "/api/notifications/orders", "/api/ai/brief"];
+    return ["/api/business", "/api/ai/audit", "/api/notifications/orders", "/api/ai/brief", "/api/dashboard/summary"];
   }
   if (path === "/api/notifications/test-order-email") {
     return ["/api/notifications/orders"];
@@ -478,10 +492,10 @@ function invalidationPathsForMutation(path: string): string[] {
     return ["/api/notifications/orders"];
   }
   if (path === "/api/analysis/replenishment") {
-    return ["/api/reports", "/api/jobs", "/api/ai/report-comparison", "/api/ai/brief", "/api/ai/anomalies"];
+    return ["/api/reports", "/api/jobs", "/api/ai/report-comparison", "/api/ai/brief", "/api/ai/anomalies", "/api/dashboard/summary"];
   }
   if (path === "/api/ai/auto-orders") {
-    return ["/api/orders", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/suppliers/scorecards"];
+    return ["/api/orders", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/suppliers/scorecards", "/api/dashboard/summary"];
   }
   if (path === "/api/ai/scenario" || path === "/api/ai/chat") {
     return [];
