@@ -170,9 +170,25 @@ class DynamoDBStoreTests(unittest.TestCase):
 
         self.assertEqual(result.status, "completed")
         self.assertGreaterEqual(len(result.steps), 4)
+        self.assertIn("inventory_risk_agent", {step.agent_name for step in result.steps})
+        self.assertIn("supplier_delay_agent", {step.agent_name for step in result.steps})
+        self.assertIn("cash_replenishment_agent", {step.agent_name for step in result.steps})
         self.assertEqual(result.created_orders, [])
         self.assertTrue(any(step.tool_name == "draft_replenishment_orders" and step.status == "blocked" for step in result.steps))
         self.assertEqual(store.list_agent_runs()[0].run_id, result.run_id)
+
+    def test_specialist_agent_runs_only_its_own_tool(self) -> None:
+        store = self.store_module.DynamoDBStore(owner_user_id="owner-agent-specialist")
+
+        result = store.run_operations_agent(
+            self.schemas.AgentRunRequest(agent_name="inventory_risk_agent"),
+            recipient_email="owner@example.com",
+        )
+
+        self.assertEqual(result.agent_name, "inventory_risk_agent")
+        self.assertTrue(result.steps)
+        self.assertEqual({step.agent_name for step in result.steps}, {"inventory_risk_agent"})
+        self.assertEqual({step.tool_name for step in result.steps}, {"inventory_risk_scan"})
 
     def test_operations_agent_blocks_external_actions(self) -> None:
         store = self.store_module.DynamoDBStore(owner_user_id="owner-agent-block")

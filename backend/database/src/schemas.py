@@ -332,6 +332,12 @@ AgentToolName = Literal[
     "cash_replenishment_check",
     "draft_replenishment_orders",
 ]
+AgentName = Literal[
+    "operations_manager",
+    "inventory_risk_agent",
+    "supplier_delay_agent",
+    "cash_replenishment_agent",
+]
 
 
 class AgentRunRequest(BaseModel):
@@ -340,11 +346,13 @@ class AgentRunRequest(BaseModel):
         min_length=8,
         max_length=240,
     )
+    agent_name: AgentName = "operations_manager"
     allow_order_drafts: bool = False
 
 
 class AgentStepResult(BaseModel):
     step_id: str = Field(default_factory=new_id)
+    agent_name: AgentName = "operations_manager"
     tool_name: AgentToolName
     status: Literal["completed", "skipped", "blocked"]
     summary: str
@@ -359,6 +367,7 @@ class AgentStepResult(BaseModel):
 class AgentRunResponse(BaseModel):
     run_id: str = Field(default_factory=new_id)
     business_id: str
+    agent_name: AgentName = "operations_manager"
     goal: str
     status: Literal["completed", "blocked", "failed"]
     summary: str

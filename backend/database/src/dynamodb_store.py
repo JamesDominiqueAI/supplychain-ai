@@ -18,6 +18,7 @@ from notifications import EmailAlertService
 from services import ReplenishmentService
 from schemas import (
     AIAuditLog,
+    AgentName,
     AgentRunRequest,
     AgentRunResponse,
     AgentStepResult,
@@ -973,17 +974,41 @@ class DynamoDBStore:
 
     def _agent_step(
         self,
+        agent_name: str,
         tool_name: str,
         status: str,
         summary: str,
         details: list[str] | None = None,
     ) -> AgentStepResult:
         return AgentStepResult(
+            agent_name=agent_name,
             tool_name=tool_name,
             status=status,
             summary=summary,
             details=details or [],
         )
+
+    def _persist_agent_run(
+        self,
+        run: AgentRunResponse,
+        *,
+        audit_status: str,
+        used_ai: bool,
+        reason: str,
+    ) -> AgentRunResponse:
+        self.state.agent_runs.insert(0, run)
+        self.state.agent_runs = self.state.agent_runs[:100]
+        self._record_ai_audit(
+            feature="agent",
+            used_ai=used_ai,
+            status=audit_status,
+            input_preview=run.goal,
+            output_preview=run.summary,
+            confidence="high",
+            reason=reason,
+        )
+        self._save_state()
+        return run
 
     def _agent_goal_is_allowed(self, goal: str) -> bool:
         normalized = goal.strip().lower()
@@ -1017,110 +1042,62 @@ class DynamoDBStore:
         }
         return any(term in normalized for term in allowed_terms) and not any(term in normalized for term in blocked_terms)
 
-    def run_operations_agent(
-        self,
-        request: AgentRunRequest,
-        *,
-        recipient_email: str | None = None,
-    ) -> AgentRunResponse:
-        goal = request.goal.strip()
-        guardrail_notes = [
-            "Agent tools are limited to internal workspace data and draft order creation.",
-            "External supplier calls, payments, and off-platform purchasing are blocked.",
-        ]
-        if not self.business.ai_enabled:
-            guardrail_notes.append("AI is disabled, so the agent is blocked before planning.")
-            run = AgentRunResponse(
-                business_id=self.business.business_id,
-                goal=goal,
-                status="blocked",
-                summary="Agent run blocked because AI is disabled in Settings.",
-                steps=[],
-                guardrail_notes=guardrail_notes,
-            )
-            self.state.agent_runs.insert(0, run)
-            self.state.agent_runs = self.state.agent_runs[:100]
-            self._record_ai_audit(
-                feature="agent",
-                used_ai=False,
-                status="refused",
-                input_preview=goal,
-                output_preview=run.summary,
-                confidence="high",
-                reason="AI disabled.",
-            )
-            self._save_state()
-            return run
-
-        if not self._agent_goal_is_allowed(goal):
-            guardrail_notes.append("Goal is outside inventory operations or asks for unsupported external action.")
-            run = AgentRunResponse(
-                business_id=self.business.business_id,
-                goal=goal,
-                status="blocked",
-                summary="Agent run blocked by allowed-topic guardrails.",
-                steps=[],
-                guardrail_notes=guardrail_notes,
-            )
-            self.state.agent_runs.insert(0, run)
-            self.state.agent_runs = self.state.agent_runs[:100]
-            self._record_ai_audit(
-                feature="agent",
-                used_ai=False,
-                status="refused",
-                input_preview=goal,
-                output_preview=run.summary,
-                confidence="high",
-                reason="Unsupported agent goal.",
-            )
-            self._save_state()
-            return run
-
-        steps: list[AgentStepResult] = []
-        health = self.inventory_health()
+    def _run_inventory_risk_agent(self, health: list[InventoryHealthItem]) -> tuple[list[AgentStepResult], list[InventoryHealthItem]]:
         risky_items = [item for item in health if item.risk_level in {"critical", "high", "watch"}]
-        steps.append(
+        return [
             self._agent_step(
+                "inventory_risk_agent",
                 "inventory_risk_scan",
                 "completed",
-                f"Found {len(risky_items)} inventory item(s) needing attention.",
+                f"Inventory Risk Agent found {len(risky_items)} item(s) needing attention.",
                 [
                     f"{item.product_name} ({item.sku}): {item.current_stock} on hand, {item.days_of_cover} days cover, risk {item.risk_level}."
                     for item in risky_items[:5]
                 ],
             )
-        )
+        ], risky_items
 
-        late_orders = [order for order in self.list_orders() if order.is_late]
-        steps.append(
+    def _run_supplier_delay_agent(self, orders: list[PurchaseOrder]) -> tuple[list[AgentStepResult], list[PurchaseOrder]]:
+        late_orders = [order for order in orders if order.is_late]
+        return [
             self._agent_step(
+                "supplier_delay_agent",
                 "late_order_scan",
                 "completed",
-                f"Found {len(late_orders)} late order(s).",
+                f"Supplier Delay Agent found {len(late_orders)} late order(s).",
                 [
                     f"{order.product_name} ({order.sku}) is late by {order.days_late} day(s), status {order.status.replace('_', ' ')}."
                     for order in late_orders[:5]
                 ],
             )
-        )
+        ], late_orders
 
+    def _latest_report_for_agent(self) -> tuple[ReplenishmentReport | None, str]:
         latest_report = self.list_reports()[0] if self.list_reports() else None
         if latest_report is None:
             job = self.run_replenishment_job()
             latest_report = self.list_reports()[0] if self.list_reports() else None
-            report_detail = f"Generated replenishment report through job {job.job_id}."
-        else:
-            report_detail = f"Used latest replenishment report {latest_report.report_id}."
+            return latest_report, f"Generated replenishment report through job {job.job_id}."
+        return latest_report, f"Used latest replenishment report {latest_report.report_id}."
+
+    def _run_cash_replenishment_agent(
+        self,
+        latest_report: ReplenishmentReport | None,
+        report_detail: str,
+        *,
+        allow_order_drafts: bool,
+        recipient_email: str | None,
+    ) -> tuple[list[AgentStepResult], list[PurchaseOrder]]:
         spend = latest_report.total_recommended_spend if latest_report else 0
-        cash_summary = (
-            f"Recommended spend is {spend:g} {self.business.currency} against "
-            f"{self.business.available_cash:g} {self.business.currency} available cash."
-        )
-        steps.append(
+        steps = [
             self._agent_step(
+                "cash_replenishment_agent",
                 "cash_replenishment_check",
                 "completed",
-                cash_summary,
+                (
+                    f"Cash Replenishment Agent checked {spend:g} {self.business.currency} recommended spend "
+                    f"against {self.business.available_cash:g} {self.business.currency} available cash."
+                ),
                 [
                     report_detail,
                     "Cash pressure detected; split or defer lower-risk orders."
@@ -1128,45 +1105,146 @@ class DynamoDBStore:
                     else "Recommended spend fits available cash.",
                 ],
             )
-        )
+        ]
 
         created_orders: list[PurchaseOrder] = []
-        if request.allow_order_drafts and self.business.ai_automation_enabled:
+        if allow_order_drafts and self.business.ai_automation_enabled:
             auto_result = self.auto_place_orders(recipient_email=recipient_email)
             created_orders = auto_result.created_orders
             steps.append(
                 self._agent_step(
+                    "cash_replenishment_agent",
                     "draft_replenishment_orders",
                     "completed",
                     auto_result.summary,
                     [f"Drafted {order.quantity} units of {order.product_name} ({order.sku})." for order in created_orders[:5]],
                 )
             )
-        elif request.allow_order_drafts:
+        elif allow_order_drafts:
             steps.append(
                 self._agent_step(
+                    "cash_replenishment_agent",
                     "draft_replenishment_orders",
                     "blocked",
                     "Draft order creation was requested but AI automation is disabled.",
-                    ["Enable AI Automation in Settings before the agent can draft orders."],
+                    ["Enable AI Automation in Settings before the cash agent can draft orders."],
                 )
             )
         else:
             steps.append(
                 self._agent_step(
+                    "cash_replenishment_agent",
                     "draft_replenishment_orders",
                     "skipped",
                     "Draft order creation was not requested for this run.",
-                    ["The agent monitored and planned only; no orders were created."],
+                    ["The cash agent planned only; no orders were created."],
                 )
             )
+        return steps, created_orders
+
+    def run_operations_agent(
+        self,
+        request: AgentRunRequest,
+        *,
+        recipient_email: str | None = None,
+    ) -> AgentRunResponse:
+        goal = request.goal.strip()
+        agent_name: AgentName = request.agent_name
+        guardrail_notes = [
+            "Agent team tools are limited to internal workspace data and draft order creation.",
+            "External supplier calls, payments, and off-platform purchasing are blocked.",
+            "Operations Manager can coordinate Inventory Risk, Supplier Delay, and Cash Replenishment agents.",
+        ]
+        if not self.business.ai_enabled:
+            guardrail_notes.append("AI is disabled, so the agent is blocked before planning.")
+            run = AgentRunResponse(
+                business_id=self.business.business_id,
+                agent_name=agent_name,
+                goal=goal,
+                status="blocked",
+                summary="Agent run blocked because AI is disabled in Settings.",
+                steps=[],
+                guardrail_notes=guardrail_notes,
+            )
+            return self._persist_agent_run(run, audit_status="refused", used_ai=False, reason="AI disabled.")
+
+        if not self._agent_goal_is_allowed(goal):
+            guardrail_notes.append("Goal is outside inventory operations or asks for unsupported external action.")
+            run = AgentRunResponse(
+                business_id=self.business.business_id,
+                agent_name=agent_name,
+                goal=goal,
+                status="blocked",
+                summary="Agent run blocked by allowed-topic guardrails.",
+                steps=[],
+                guardrail_notes=guardrail_notes,
+            )
+            return self._persist_agent_run(run, audit_status="refused", used_ai=False, reason="Unsupported agent goal.")
+
+        steps: list[AgentStepResult] = []
+        health = self.inventory_health()
+        orders = self.list_orders()
+        inventory_steps, risky_items = self._run_inventory_risk_agent(health)
+        supplier_steps, late_orders = self._run_supplier_delay_agent(orders)
+        latest_report, report_detail = self._latest_report_for_agent()
+        created_orders: list[PurchaseOrder] = []
+        if agent_name == "inventory_risk_agent":
+            steps.extend(inventory_steps)
+        elif agent_name == "supplier_delay_agent":
+            steps.extend(supplier_steps)
+        elif agent_name == "cash_replenishment_agent":
+            cash_steps, created_orders = self._run_cash_replenishment_agent(
+                latest_report,
+                report_detail,
+                allow_order_drafts=request.allow_order_drafts,
+                recipient_email=recipient_email,
+            )
+            steps.extend(cash_steps)
+        else:
+            steps.append(
+                self._agent_step(
+                    "operations_manager",
+                    "inventory_risk_scan",
+                    "completed",
+                    "Operations Manager delegated inventory risk scanning to the Inventory Risk Agent.",
+                    [inventory_steps[0].summary],
+                )
+            )
+            steps.extend(inventory_steps)
+            steps.append(
+                self._agent_step(
+                    "operations_manager",
+                    "late_order_scan",
+                    "completed",
+                    "Operations Manager delegated late-order monitoring to the Supplier Delay Agent.",
+                    [supplier_steps[0].summary],
+                )
+            )
+            steps.extend(supplier_steps)
+            cash_steps, created_orders = self._run_cash_replenishment_agent(
+                latest_report,
+                report_detail,
+                allow_order_drafts=request.allow_order_drafts,
+                recipient_email=recipient_email,
+            )
+            steps.append(
+                self._agent_step(
+                    "operations_manager",
+                    "cash_replenishment_check",
+                    "completed",
+                    "Operations Manager delegated cash and replenishment planning to the Cash Replenishment Agent.",
+                    [cash_steps[0].summary],
+                )
+            )
+            steps.extend(cash_steps)
 
         summary = (
-            f"Agent completed {len(steps)} tool step(s): {len(risky_items)} risky item(s), "
+            f"{agent_name.replace('_', ' ').title()} completed {len(steps)} tool step(s): {len(risky_items)} risky item(s), "
             f"{len(late_orders)} late order(s), and {len(created_orders)} draft order(s) created."
         )
         run = AgentRunResponse(
             business_id=self.business.business_id,
+            agent_name=agent_name,
             goal=goal,
             status="completed",
             summary=summary,
@@ -1174,19 +1252,12 @@ class DynamoDBStore:
             created_orders=created_orders,
             guardrail_notes=guardrail_notes,
         )
-        self.state.agent_runs.insert(0, run)
-        self.state.agent_runs = self.state.agent_runs[:100]
-        self._record_ai_audit(
-            feature="agent",
+        return self._persist_agent_run(
+            run,
+            audit_status="accepted",
             used_ai=True,
-            status="accepted",
-            input_preview=goal,
-            output_preview=summary,
-            confidence="high",
-            reason="Operations agent executed bounded internal tools.",
+            reason="Agent team executed bounded internal tools.",
         )
-        self._save_state()
-        return run
 
     def _rule_based_workspace_answer(
         self,

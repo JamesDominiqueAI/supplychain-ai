@@ -272,6 +272,7 @@ export interface AIAuditLog {
 
 export interface AgentStepResult {
   step_id: string;
+  agent_name: "operations_manager" | "inventory_risk_agent" | "supplier_delay_agent" | "cash_replenishment_agent";
   tool_name: "inventory_risk_scan" | "late_order_scan" | "cash_replenishment_check" | "draft_replenishment_orders";
   status: "completed" | "skipped" | "blocked";
   summary: string;
@@ -282,6 +283,7 @@ export interface AgentStepResult {
 export interface AgentRunResponse {
   run_id: string;
   business_id: string;
+  agent_name: "operations_manager" | "inventory_risk_agent" | "supplier_delay_agent" | "cash_replenishment_agent";
   goal: string;
   status: "completed" | "blocked" | "failed";
   summary: string;
@@ -520,6 +522,13 @@ function invalidationPathsForMutation(path: string): string[] {
     return ["/api/orders", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/suppliers/scorecards", "/api/dashboard/summary"];
   }
   if (path === "/api/ai/agents/operations") {
+    return ["/api/ai/agents/runs", "/api/orders", "/api/ai/audit", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/dashboard/summary"];
+  }
+  if (
+    path === "/api/ai/agents/inventory-risk" ||
+    path === "/api/ai/agents/supplier-delay" ||
+    path === "/api/ai/agents/cash-replenishment"
+  ) {
     return ["/api/ai/agents/runs", "/api/orders", "/api/ai/audit", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/dashboard/summary"];
   }
   if (path === "/api/ai/scenario" || path === "/api/ai/chat") {

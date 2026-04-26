@@ -192,6 +192,7 @@ function OverviewPage() {
         },
         body: JSON.stringify({
           goal: "Monitor today's inventory risks, late orders, cash pressure, and safe replenishment actions.",
+          agent_name: "operations_manager",
           allow_order_drafts: Boolean(business?.ai_automation_enabled),
         }),
       });
@@ -340,8 +341,8 @@ function OverviewPage() {
                         </span>
                       </div>
                       <p>
-                        Runs a guarded internal workflow: scan risky SKUs, check late orders, review cash pressure,
-                        and draft replenishment orders only when automation is enabled.
+                        Runs a guarded agent team: Operations Manager coordinates Inventory Risk, Supplier Delay,
+                        and Cash Replenishment agents. Draft orders only happen when automation is enabled.
                       </p>
                     </article>
                     <button
@@ -349,7 +350,7 @@ function OverviewPage() {
                       onClick={runOperationsAgent}
                       disabled={agentRunning || !business?.ai_enabled}
                     >
-                      {agentRunning ? "Running Agent..." : "Run Operations Agent"}
+                      {agentRunning ? "Running Agent Team..." : "Run Agent Team"}
                     </button>
                     {!business?.ai_enabled ? (
                       <div className="notice info">Enable `Use AI` in Settings before the operations agent can run.</div>
@@ -364,7 +365,7 @@ function OverviewPage() {
                         <div className="answer-content">
                           {agentRun.steps.map((step) => (
                             <article className="answer-risk-card" key={step.step_id}>
-                              <strong>{step.tool_name.replace(/_/g, " ")}</strong>
+                              <strong>{step.agent_name.replace(/_/g, " ")} · {step.tool_name.replace(/_/g, " ")}</strong>
                               <p>{step.summary}</p>
                               {step.details.length ? (
                                 <ul className="answer-list">

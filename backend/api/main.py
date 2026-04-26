@@ -288,6 +288,32 @@ async def list_agent_runs(
     return store.list_agent_runs(limit=limit)
 
 
+@app.get("/api/ai/agents")
+async def list_agents():
+    return [
+        {
+            "agent_name": "operations_manager",
+            "label": "Operations Manager Agent",
+            "role": "Coordinates the specialist agents and summarizes the operational plan.",
+        },
+        {
+            "agent_name": "inventory_risk_agent",
+            "label": "Inventory Risk Agent",
+            "role": "Finds critical SKUs, low days of cover, and stockout risk.",
+        },
+        {
+            "agent_name": "supplier_delay_agent",
+            "label": "Supplier Delay Agent",
+            "role": "Monitors late orders, supplier delay exposure, and follow-up priorities.",
+        },
+        {
+            "agent_name": "cash_replenishment_agent",
+            "label": "Cash Replenishment Agent",
+            "role": "Checks cash pressure and drafts replenishment orders when automation is enabled.",
+        },
+    ]
+
+
 @app.post("/api/ai/agents/operations")
 async def run_operations_agent(
     payload: AgentRunRequest,
@@ -295,6 +321,42 @@ async def run_operations_agent(
     actor_email: str | None = Header(default=None, alias="X-Actor-Email"),
 ) -> AgentRunResponse:
     return store.run_operations_agent(payload, recipient_email=actor_email)
+
+
+@app.post("/api/ai/agents/inventory-risk")
+async def run_inventory_risk_agent(
+    payload: AgentRunRequest,
+    store: DynamoDBStore = Depends(get_store),
+    actor_email: str | None = Header(default=None, alias="X-Actor-Email"),
+) -> AgentRunResponse:
+    return store.run_operations_agent(
+        payload.model_copy(update={"agent_name": "inventory_risk_agent", "allow_order_drafts": False}),
+        recipient_email=actor_email,
+    )
+
+
+@app.post("/api/ai/agents/supplier-delay")
+async def run_supplier_delay_agent(
+    payload: AgentRunRequest,
+    store: DynamoDBStore = Depends(get_store),
+    actor_email: str | None = Header(default=None, alias="X-Actor-Email"),
+) -> AgentRunResponse:
+    return store.run_operations_agent(
+        payload.model_copy(update={"agent_name": "supplier_delay_agent", "allow_order_drafts": False}),
+        recipient_email=actor_email,
+    )
+
+
+@app.post("/api/ai/agents/cash-replenishment")
+async def run_cash_replenishment_agent(
+    payload: AgentRunRequest,
+    store: DynamoDBStore = Depends(get_store),
+    actor_email: str | None = Header(default=None, alias="X-Actor-Email"),
+) -> AgentRunResponse:
+    return store.run_operations_agent(
+        payload.model_copy(update={"agent_name": "cash_replenishment_agent"}),
+        recipient_email=actor_email,
+    )
 
 
 @app.post("/api/ai/chat")
