@@ -14,7 +14,7 @@ import csv
 from pathlib import Path
 import sys
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -224,8 +224,11 @@ async def get_anomaly_insights(store: DynamoDBStore = Depends(get_store)):
 
 
 @app.get("/api/ai/audit")
-async def list_ai_audit(store: DynamoDBStore = Depends(get_store)):
-    return store.list_ai_audit_logs()
+async def list_ai_audit(
+    limit: int = Query(default=5, ge=1, le=50),
+    store: DynamoDBStore = Depends(get_store),
+):
+    return store.list_ai_audit_logs(limit=limit)
 
 
 @app.get("/api/ai/brief")

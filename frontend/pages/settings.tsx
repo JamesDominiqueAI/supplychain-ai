@@ -14,10 +14,10 @@ export default function SettingsPage() {
   const [testNotice, setTestNotice] = useState<string | null>(null);
   const [notificationEmailDraft, setNotificationEmailDraft] = useState("");
   const businessQuery = useWorkspaceQuery<Business>(getToken, "/api/business");
-  const auditQuery = useWorkspaceQuery<AIAuditLog[]>(getToken, "/api/ai/audit");
+  const auditQuery = useWorkspaceQuery<AIAuditLog[]>(getToken, "/api/ai/audit?limit=5");
   const notificationsQuery = useWorkspaceQuery<OrderNotificationEvent[]>(getToken, "/api/notifications/orders");
   const business = businessQuery.data;
-  const auditLogs = auditQuery.data || [];
+  const auditLogs = (auditQuery.data || []).slice(0, 5);
   const notificationEvents = notificationsQuery.data || [];
 
   useEffect(() => {
