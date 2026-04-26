@@ -193,6 +193,16 @@ class DynamoDBStoreTests(unittest.TestCase):
         self.assertEqual(order.status, "placed")
         self.assertEqual(set(sent_to), {"owner@example.com", "buyer@example.com"})
 
+    def test_user_order_email_does_not_expose_clerk_user_id(self) -> None:
+        notifications = importlib.import_module("notifications")
+
+        label = notifications._public_actor_label(
+            placed_by_type="user",
+            placed_by_label="Signed-in user (user_3BrVNju7u4cLWO1FDyUObWe5wzN)",
+        )
+
+        self.assertEqual(label, "You")
+
     def test_ai_audit_logs_capture_token_usage(self) -> None:
         store = self.store_module.DynamoDBStore(owner_user_id="owner-ai-tokens")
 

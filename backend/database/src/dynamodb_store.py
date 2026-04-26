@@ -1275,7 +1275,7 @@ class DynamoDBStore:
         order.status = request.status
         if request.status == "placed" and not was_placed and order.placed_by_type != "llm":
             order.placed_by_type = "user"
-            order.placed_by_label = f"Signed-in user ({self.owner_user_id})"
+            order.placed_by_label = recipient_email or "You"
         order.updated_at = utc_now()
         self._refresh_order_timeliness(order)
         self._save_state()
@@ -1326,7 +1326,7 @@ class DynamoDBStore:
             quantity=3,
             estimated_cost=sample_cost,
             placed_by_type="user",
-            placed_by_label=f"Signed-in user ({self.owner_user_id})",
+            placed_by_label=recipient_email or "You",
             note="Manual test order email from Settings",
         )
         delivered, detail = self.email_alerts.send_order_placed_alert(

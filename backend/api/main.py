@@ -380,7 +380,7 @@ async def create_order(
         return store.create_purchase_order(
             payload,
             placed_by_type="user",
-            placed_by_label=f"Signed-in user ({store.owner_user_id})",
+            placed_by_label=actor_email or "You",
             recipient_email=actor_email,
         )
     except KeyError as exc:

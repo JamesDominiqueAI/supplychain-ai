@@ -13,6 +13,16 @@ from schemas import Business, InventoryHealthItem, Product
 logger = logging.getLogger(__name__)
 
 
+def _public_actor_label(*, placed_by_type: str, placed_by_label: str | None) -> str:
+    if placed_by_type == "llm":
+        return placed_by_label or "LLM automation"
+    if placed_by_type == "system":
+        return placed_by_label or "System"
+    if placed_by_label and "user_" not in placed_by_label:
+        return placed_by_label
+    return "You"
+
+
 class EmailAlertService:
     """Sends operational email notifications when configured."""
 
@@ -99,7 +109,7 @@ class EmailAlertService:
         if not recipient_email:
             return False, "No notification email is configured for this workspace."
 
-        actor_label = placed_by_label or ("LLM automation" if placed_by_type == "llm" else "Signed-in user")
+        actor_label = _public_actor_label(placed_by_type=placed_by_type, placed_by_label=placed_by_label)
         subject = f"[Order Placed] {sku} purchase order created"
         body = "\n".join(
             [
