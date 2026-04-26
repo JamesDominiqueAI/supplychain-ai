@@ -373,12 +373,29 @@ class DynamoDBStore:
             detail=detail,
         )
 
-    def _send_order_placement_email(self, *, order: PurchaseOrder, product: Product) -> None:
-        self._send_order_placement_email_to_recipient(
-            order=order,
-            product=product,
-            recipient_email=self.business.notification_email,
-        )
+    def _order_notification_recipients(self, extra_email: str | None = None) -> list[str]:
+        recipients: list[str] = []
+        for email in (self.business.notification_email, extra_email):
+            normalized = (email or "").strip()
+            if normalized and normalized.lower() not in {item.lower() for item in recipients}:
+                recipients.append(normalized)
+        return recipients
+
+    def _send_order_placement_email(self, *, order: PurchaseOrder, product: Product, recipient_email: str | None = None) -> None:
+        recipients = self._order_notification_recipients(recipient_email)
+        if not recipients:
+            self._send_order_placement_email_to_recipient(
+                order=order,
+                product=product,
+                recipient_email=None,
+            )
+            return
+        for target_email in recipients:
+            self._send_order_placement_email_to_recipient(
+                order=order,
+                product=product,
+                recipient_email=target_email,
+            )
 
     def retry_failed_order_notifications(self, *, recipient_email: str | None = None) -> list[OrderNotificationEvent]:
         failed_events = [
@@ -1235,17 +1252,15 @@ class DynamoDBStore:
         self.state.orders.append(order)
         self._save_state()
         if order.status == "placed":
-            self._send_order_placement_email_to_recipient(
-                order=order,
-                product=product,
-                recipient_email=recipient_email or self.business.notification_email,
-            )
+            self._send_order_placement_email(order=order, product=product, recipient_email=recipient_email)
         return order
 
     def update_purchase_order_status(
         self,
         order_id: str,
         request: UpdatePurchaseOrderStatusRequest,
+        *,
+        recipient_email: str | None = None,
     ) -> PurchaseOrder:
         order = self._state_order(order_id)
         product = self._state_product(order.product_id)
@@ -1258,7 +1273,7 @@ class DynamoDBStore:
         self._refresh_order_timeliness(order)
         self._save_state()
         if request.status == "placed" and not was_placed:
-            self._send_order_placement_email(order=order, product=product)
+            self._send_order_placement_email(order=order, product=product, recipient_email=recipient_email)
         return order
 
     def receive_purchase_order(

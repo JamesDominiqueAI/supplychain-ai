@@ -1,4 +1,4 @@
-import { SignedIn, SignedOut, useAuth } from "@clerk/nextjs";
+import { SignedIn, SignedOut, useAuth, useUser } from "@clerk/nextjs";
 import Head from "next/head";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
@@ -22,6 +22,7 @@ function labelForStatus(status: PurchaseOrder["status"]): string {
 
 export default function OrdersPage() {
   const { getToken } = useAuth();
+  const { user } = useUser();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [notice, setNotice] = useState<string | null>(null);
@@ -51,6 +52,9 @@ export default function OrdersPage() {
   async function advance(order: PurchaseOrder, status: PurchaseOrder["status"]) {
     await authorizedFetch(getToken, `/api/orders/${order.order_id}/status`, {
       method: "POST",
+      headers: {
+        "X-Actor-Email": user?.primaryEmailAddress?.emailAddress || "",
+      },
       body: JSON.stringify({ status }),
     });
     setNotice(`Order ${order.sku} updated to ${labelForStatus(status)}.`);

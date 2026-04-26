@@ -172,6 +172,27 @@ class DynamoDBStoreTests(unittest.TestCase):
 
         self.assertTrue(any(event.order_id == order.order_id and event.status == "sent" for event in events))
 
+    def test_order_notifications_include_actor_and_workspace_email(self) -> None:
+        sent_to: list[str | None] = []
+
+        def fake_send(*args, **kwargs):
+            sent_to.append(kwargs.get("recipient_email"))
+            return True, "email sent"
+
+        store = self.store_module.DynamoDBStore(owner_user_id="owner-multi-email")
+        store.email_alerts.send_order_placed_alert = fake_send
+        store.update_business_settings(
+            self.schemas.UpdateBusinessSettingsRequest(notification_email="owner@example.com")
+        )
+        product = store.list_products()[0]
+        order = store.create_purchase_order(
+            self.schemas.CreatePurchaseOrderRequest(product_id=product.product_id, quantity=2),
+            recipient_email="buyer@example.com",
+        )
+
+        self.assertEqual(order.status, "placed")
+        self.assertEqual(set(sent_to), {"owner@example.com", "buyer@example.com"})
+
     def test_ai_audit_logs_capture_token_usage(self) -> None:
         store = self.store_module.DynamoDBStore(owner_user_id="owner-ai-tokens")
 

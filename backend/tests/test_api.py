@@ -70,6 +70,12 @@ class FakeApiStore:
         self.orders.append(order)
         return order
 
+    def update_purchase_order_status(self, order_id, payload, **kwargs):
+        order = next(item for item in self.orders if item["order_id"] == order_id)
+        order["status"] = payload.status
+        order["last_recipient_email"] = kwargs.get("recipient_email")
+        return order
+
 
 class ApiFunctionTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -135,6 +141,21 @@ class ApiFunctionTests(unittest.TestCase):
 
         orders = asyncio.run(self.api_main.list_orders(self.fake_store))
         self.assertTrue(any(item["order_id"] == created_order["order_id"] for item in orders))
+
+    def test_status_update_passes_actor_email_to_store(self) -> None:
+        self.fake_store.orders.append({"order_id": "order-1", "status": "approved"})
+
+        updated = asyncio.run(
+            self.api_main.update_order_status(
+                "order-1",
+                self.schemas.UpdatePurchaseOrderStatusRequest(status="placed"),
+                self.fake_store,
+                actor_email="buyer@example.com",
+            )
+        )
+
+        self.assertEqual(updated["status"], "placed")
+        self.assertEqual(updated["last_recipient_email"], "buyer@example.com")
 
 
 if __name__ == "__main__":

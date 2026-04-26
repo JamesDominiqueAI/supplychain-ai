@@ -392,9 +392,10 @@ async def update_order_status(
     order_id: str,
     payload: UpdatePurchaseOrderStatusRequest,
     store: DynamoDBStore = Depends(get_store),
+    actor_email: str | None = Header(default=None, alias="X-Actor-Email"),
 ):
     try:
-        return store.update_purchase_order_status(order_id, payload)
+        return store.update_purchase_order_status(order_id, payload, recipient_email=actor_email)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Order not found") from exc
 
