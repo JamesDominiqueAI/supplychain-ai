@@ -111,7 +111,7 @@ class DynamoDBStoreTests(unittest.TestCase):
         recovered = self.store_module.DynamoDBStore(owner_user_id="owner-corrupt")
 
         self.assertEqual(recovered._storage_mode, "file")
-        self.assertEqual(recovered.get_business().name, "SupplyChain Workspace")
+        self.assertEqual(recovered.get_business().name, "Lakay Business")
         backups = list(corrupt_path.parent.glob(f"{corrupt_path.name}.corrupt-*"))
         self.assertTrue(backups)
 

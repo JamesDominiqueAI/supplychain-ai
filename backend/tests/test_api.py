@@ -14,7 +14,7 @@ class FakeApiStore:
         self.orders = []
 
     def get_business(self):
-        return {"business_id": "biz-1", "name": "SupplyChain Workspace"}
+        return {"business_id": "biz-1", "name": "Lakay Business"}
 
     def list_products(self):
         return self.products
@@ -86,7 +86,7 @@ class ApiFunctionTests(unittest.TestCase):
 
     def test_business_and_product_flow(self) -> None:
         business = asyncio.run(self.api_main.get_business(self.fake_store))
-        self.assertEqual(business["name"], "SupplyChain Workspace")
+        self.assertEqual(business["name"], "Lakay Business")
 
         created = asyncio.run(
             self.api_main.create_product(

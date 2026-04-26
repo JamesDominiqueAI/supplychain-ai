@@ -49,6 +49,9 @@ from schemas import (
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_BUSINESS_NAME = "Lakay Business"
+LEGACY_DEFAULT_BUSINESS_NAMES = {"SupplyChain Workspace"}
+
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -103,12 +106,21 @@ class DynamoDBStore:
         self._initialize_storage()
         self.state = self._load_state()
         if self.state.business is None:
-            self.business = Business(name="SupplyChain Workspace")
+            self.business = Business(name=DEFAULT_BUSINESS_NAME)
             self.state.business = self.business
             self._save_state()
         else:
             self.business = self.state.business
+            if self._migrate_legacy_default_business_name():
+                self._save_state()
         self._seed()
+
+    def _migrate_legacy_default_business_name(self) -> bool:
+        if self.business.name not in LEGACY_DEFAULT_BUSINESS_NAMES:
+            return False
+        self.business.name = DEFAULT_BUSINESS_NAME
+        self.state.business = self.business
+        return True
 
     def _initialize_storage(self) -> None:
         if self._prefer_local_mode:

@@ -27,7 +27,7 @@ export function WorkspaceShell({ title, description, children }: WorkspaceShellP
       <div className="shell dashboard-shell">
         <section className="workspace-header">
           <div>
-            <p className="eyebrow">SupplyChain Workspace</p>
+            <p className="eyebrow">Lakay Business</p>
             <h1>{title}</h1>
             <p className="lede">
               {description}
