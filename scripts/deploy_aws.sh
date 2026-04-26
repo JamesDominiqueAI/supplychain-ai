@@ -86,6 +86,10 @@ ensure_frontend_api_resources_in_state() {
     -var="clerk_issuer=${CLERK_ISSUER}"
     -var="openai_model=${OPENAI_MODEL:-gpt-5-nano}"
     -var="resend_from_email=${RESEND_FROM_EMAIL}"
+    -var="enable_scheduled_agent=${ENABLE_SCHEDULED_AGENT:-false}"
+    -var="scheduled_agent_owner_id=${SCHEDULED_AGENT_OWNER_ID:-}"
+    -var="scheduled_agent_allow_drafts=${SCHEDULED_AGENT_ALLOW_DRAFTS:-false}"
+    -var="scheduled_agent_expression=${SCHEDULED_AGENT_EXPRESSION:-rate(1 day)}"
   )
   local role_name="${name_prefix}-api-lambda-role"
   local role_policy_name="${name_prefix}-api-lambda-dynamodb"
@@ -93,6 +97,7 @@ ensure_frontend_api_resources_in_state() {
   local lambda_alias_name="live"
   local api_name="${name_prefix}-api-gateway"
   local oac_name="${name_prefix}-frontend-oac"
+  local scheduled_agent_rule_name="${name_prefix}-scheduled-agent"
   local basic_role_policy_arn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 
   if aws s3api head-bucket --bucket "$bucket_name" --region "$AWS_REGION" >/dev/null 2>&1; then
@@ -151,6 +156,11 @@ ensure_frontend_api_resources_in_state() {
       --query "Policy" --output text 2>/dev/null | grep -q 'AllowExecutionFromApiGateway'; then
       terraform_import_if_missing "$tf_dir" 'aws_lambda_permission.api_gateway[0]' "${lambda_permission_target}/AllowExecutionFromApiGateway" "${terraform_args[@]}"
     fi
+  fi
+
+  if [[ "${ENABLE_SCHEDULED_AGENT:-false}" == "true" && -n "${SCHEDULED_AGENT_OWNER_ID:-}" ]] && \
+    aws events describe-rule --name "$scheduled_agent_rule_name" --region "$AWS_REGION" >/dev/null 2>&1; then
+    terraform_import_if_missing "$tf_dir" 'aws_cloudwatch_event_rule.scheduled_agent[0]' "$scheduled_agent_rule_name" "${terraform_args[@]}"
   fi
 
   local api_id
@@ -223,6 +233,10 @@ echo "Applying frontend/API layer..."
     -var="clerk_issuer=${CLERK_ISSUER}" \
     -var="openai_model=${OPENAI_MODEL:-gpt-5-nano}" \
     -var="resend_from_email=${RESEND_FROM_EMAIL}" \
+    -var="enable_scheduled_agent=${ENABLE_SCHEDULED_AGENT:-false}" \
+    -var="scheduled_agent_owner_id=${SCHEDULED_AGENT_OWNER_ID:-}" \
+    -var="scheduled_agent_allow_drafts=${SCHEDULED_AGENT_ALLOW_DRAFTS:-false}" \
+    -var="scheduled_agent_expression=${SCHEDULED_AGENT_EXPRESSION:-rate(1 day)}" \
     -var='api_lambda_environment={
       ALLOW_DEV_AUTH_FALLBACK = "false",
       DYNAMODB_USE_REMOTE = "true",

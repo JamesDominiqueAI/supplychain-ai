@@ -9,6 +9,7 @@ This project uses deterministic inventory logic as the system of record, then us
 - Morning brief: the assistant summarizes today's operational focus from critical items, late orders, anomalies, forecasts, and the latest report.
 - Cash scenarios: the assistant explains what to buy or defer under a cash cap.
 - Report comparison: the assistant compares the latest report against the previous one and explains operational changes.
+- Multi-agent operations: the Operations Manager coordinates specialist agents for inventory risk, supplier delay, and cash-aware replenishment. Specialist runs can also be called directly.
 
 ## Structured Outputs
 
@@ -29,6 +30,7 @@ The backend records each event in the AI audit log with feature name, AI usage, 
 - Output boundary: AI chat output is rejected if it is too short, too long, or claims unsupported external actions.
 - Fallback behavior: if AI is disabled, unavailable, low confidence, or rejected by guardrails, the backend returns deterministic rule-based answers.
 - Automation boundary: AI auto-ordering is draft-first by default and constrained by available cash plus `AI_AUTO_ORDER_MAX_SPEND`.
+- Agent boundary: agents are restricted to internal tools. Scheduled agents are disabled by default and require explicit owner/workspace configuration.
 - Auditability: prompts and responses are not fully stored, but short previews, reasons, confidence, status, and token counts are logged for traceability.
 
 ## Observability
@@ -56,6 +58,20 @@ The script creates an isolated local workspace in `/tmp`, disables external AI/e
 - AI automation creates draft orders by default.
 - Off-topic chat is refused.
 - AI audit events are persisted.
+- Multi-agent runs delegate to specialist agents and persist run history.
+- Tenant isolation checks verify another owner cannot see the evaluation SKU or agent run.
+
+Measure API latency with:
+
+```bash
+python scripts/check_latency.py --api-url "https://your-api-url" --iterations 5
+```
+
+Protected endpoints require a Clerk session token:
+
+```bash
+AUTH_TOKEN="..." python scripts/check_latency.py --api-url "https://your-api-url"
+```
 
 Run browser E2E tests after starting the frontend and backend:
 
@@ -69,7 +85,8 @@ The browser test covers Clerk login, product creation, sale recording, replenish
 ## Current Limitations
 
 - The LLM does not perform external supplier calls, negotiations, bank activity, or real purchasing outside the app.
-- Forecasting is still lightweight and based on recent movement patterns plus configured demand; it is not a full statistical forecast model.
+- Forecasting is still lightweight compared with enterprise ML systems, but it combines configured demand, historical movement averages, recent sales, and trend direction.
 - Request metrics should eventually be shipped to CloudWatch, Datadog, Grafana, or another production monitoring system.
 - E2E login requires Clerk test credentials, so CI must provide `E2E_CLERK_EMAIL` and `E2E_CLERK_PASSWORD`.
 - Token costs depend on provider response metadata; fallback and disabled-AI paths record zero or null token usage.
+- Resend test mode can only deliver to the verified account email. Sending to arbitrary recipients requires a verified sending domain.

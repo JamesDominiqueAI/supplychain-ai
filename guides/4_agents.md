@@ -4,6 +4,26 @@
 
 This project should use multiple narrow agents rather than one general model.
 
+## Implemented Agent Team
+
+The backend now exposes a guarded multi-agent team:
+
+- `operations_manager`: coordinates specialist agents and produces the overall run.
+- `inventory_risk_agent`: scans critical SKUs, days of cover, and stockout risk.
+- `supplier_delay_agent`: monitors late orders and supplier delay exposure.
+- `cash_replenishment_agent`: checks cash pressure and can draft replenishment orders when automation is enabled.
+
+API routes:
+
+- `GET /api/ai/agents`
+- `GET /api/ai/agents/runs`
+- `POST /api/ai/agents/operations`
+- `POST /api/ai/agents/inventory-risk`
+- `POST /api/ai/agents/supplier-delay`
+- `POST /api/ai/agents/cash-replenishment`
+
+The Lambda handler also supports EventBridge scheduled events. Set `ENABLE_SCHEDULED_AGENT=true` and `SCHEDULED_AGENT_OWNER_ID=<workspace owner id>` during deployment to create a scheduled operations-agent run.
+
 ## Planner Agent
 
 Inputs:
@@ -77,3 +97,11 @@ Outputs:
 - owner-friendly summary
 - top 3 urgent actions
 - explanation of why those actions matter
+
+## Safety Boundaries
+
+- Agents can only use internal workspace tools.
+- External supplier calls, negotiations, payments, and off-platform purchases are blocked.
+- Draft order creation requires both `ai_enabled` and `ai_automation_enabled`.
+- Scheduled runs are disabled by default and require an explicit workspace owner id.
+- Every run is stored and summarized in the AI audit log.

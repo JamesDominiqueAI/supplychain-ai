@@ -101,10 +101,7 @@ class DynamoDBStore:
         )
         self._table = self._dynamodb.Table(self.table_name)
         self._storage_mode = "dynamodb"
-        self._local_state_path = Path(
-            os.getenv("LOCAL_STATE_PATH")
-            or Path(__file__).resolve().parents[3] / "data" / "workspaces" / f"{self.owner_user_id}.json"
-        )
+        self._local_state_path = self._resolve_local_state_path()
         self.replenishment_service = ReplenishmentService()
         self.email_alerts = EmailAlertService()
         self._is_seeding = False
@@ -119,6 +116,18 @@ class DynamoDBStore:
             if self._migrate_legacy_default_business_name():
                 self._save_state()
         self._seed()
+
+    def _resolve_local_state_path(self) -> Path:
+        configured_path = os.getenv("LOCAL_STATE_PATH")
+        safe_owner_id = "".join(char if char.isalnum() or char in {"-", "_"} else "_" for char in self.owner_user_id)
+        if configured_path:
+            if "{owner_user_id}" in configured_path:
+                return Path(configured_path.replace("{owner_user_id}", safe_owner_id))
+            base_path = Path(configured_path)
+            if base_path.suffix:
+                return base_path.with_name(f"{base_path.stem}-{safe_owner_id}{base_path.suffix}")
+            return base_path / f"{safe_owner_id}.json"
+        return Path(__file__).resolve().parents[3] / "data" / "workspaces" / f"{safe_owner_id}.json"
 
     def _migrate_legacy_default_business_name(self) -> bool:
         if self.business.name not in LEGACY_DEFAULT_BUSINESS_NAMES:

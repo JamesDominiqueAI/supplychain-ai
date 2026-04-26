@@ -46,6 +46,7 @@ def main() -> int:
 
     from dynamodb_store import DynamoDBStore
     from schemas import (
+        AgentRunRequest,
         CreateInventoryMovementRequest,
         CreateProductRequest,
         CreateSupplierRequest,
@@ -143,6 +144,33 @@ def main() -> int:
             "AI/fallback/refusal decisions are stored in the audit log.",
             f"{len(audit_logs)} audit event(s), latest_status={audit_logs[0].status if audit_logs else 'none'}.",
             len(audit_logs) > 0,
+        )
+    )
+
+    agent_run = store.run_operations_agent(
+        AgentRunRequest(goal="Monitor inventory risks, supplier delays, and cash pressure.", allow_order_drafts=False),
+        recipient_email="owner@example.com",
+    )
+    agent_names = {step.agent_name for step in agent_run.steps}
+    results.append(
+        scenario(
+            "multi-agent-run",
+            "The operations manager delegates work to specialist agents and stores the run.",
+            f"status={agent_run.status}, agents={sorted(agent_names)}, stored={len(store.list_agent_runs())}.",
+            agent_run.status == "completed"
+            and {"inventory_risk_agent", "supplier_delay_agent", "cash_replenishment_agent"}.issubset(agent_names)
+            and len(store.list_agent_runs()) >= 1,
+        )
+    )
+
+    other_store = DynamoDBStore(owner_user_id=f"eval-other-{uuid4().hex}")
+    results.append(
+        scenario(
+            "tenant-isolation",
+            "A different owner workspace cannot see this run or custom evaluation SKU.",
+            f"other_products={len(other_store.list_products())}, other_agent_runs={len(other_store.list_agent_runs())}.",
+            not any(item.sku == "EVAL-CRIT" for item in other_store.list_products())
+            and len(other_store.list_agent_runs()) == 0,
         )
     )
 

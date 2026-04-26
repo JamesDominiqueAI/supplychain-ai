@@ -258,15 +258,18 @@ resource "aws_lambda_function" "api" {
             var.additional_cors_origins,
           ),
         )
-        DEFAULT_AWS_REGION   = var.aws_region
-        DYNAMODB_TABLE_NAME  = var.dynamodb_table_name
-        DYNAMODB_AUTO_CREATE = "false"
-        CLERK_JWKS_URL       = var.clerk_jwks_url
-        CLERK_ISSUER         = var.clerk_issuer
-        OPENAI_API_KEY       = var.openai_api_key
-        OPENAI_MODEL         = var.openai_model
-        RESEND_API_KEY       = var.resend_api_key
-        RESEND_FROM_EMAIL    = var.resend_from_email
+        DEFAULT_AWS_REGION           = var.aws_region
+        DYNAMODB_TABLE_NAME          = var.dynamodb_table_name
+        DYNAMODB_AUTO_CREATE         = "false"
+        CLERK_JWKS_URL               = var.clerk_jwks_url
+        CLERK_ISSUER                 = var.clerk_issuer
+        OPENAI_API_KEY               = var.openai_api_key
+        OPENAI_MODEL                 = var.openai_model
+        RESEND_API_KEY               = var.resend_api_key
+        RESEND_FROM_EMAIL            = var.resend_from_email
+        SCHEDULED_AGENT_ENABLED      = var.enable_scheduled_agent ? "true" : "false"
+        SCHEDULED_AGENT_OWNER_ID     = var.scheduled_agent_owner_id
+        SCHEDULED_AGENT_ALLOW_DRAFTS = var.scheduled_agent_allow_drafts ? "true" : "false"
       },
       var.api_lambda_environment,
     )
@@ -344,4 +347,29 @@ resource "aws_lambda_permission" "api_gateway" {
   function_name = aws_lambda_alias.api_live[0].arn
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main[0].execution_arn}/*/*"
+}
+
+resource "aws_cloudwatch_event_rule" "scheduled_agent" {
+  count               = var.enable_api_lambda && var.enable_scheduled_agent && var.scheduled_agent_owner_id != "" ? 1 : 0
+  name                = "${local.name_prefix}-scheduled-agent"
+  description         = "Runs the guarded operations agent on a schedule"
+  schedule_expression = var.scheduled_agent_expression
+  tags                = local.common_tags
+}
+
+resource "aws_cloudwatch_event_target" "scheduled_agent" {
+  count = var.enable_api_lambda && var.enable_scheduled_agent && var.scheduled_agent_owner_id != "" ? 1 : 0
+
+  rule = aws_cloudwatch_event_rule.scheduled_agent[0].name
+  arn  = aws_lambda_alias.api_live[0].arn
+}
+
+resource "aws_lambda_permission" "scheduled_agent" {
+  count = var.enable_api_lambda && var.enable_scheduled_agent && var.scheduled_agent_owner_id != "" ? 1 : 0
+
+  statement_id  = "AllowExecutionFromScheduledAgent"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_alias.api_live[0].arn
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.scheduled_agent[0].arn
 }

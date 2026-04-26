@@ -76,6 +76,30 @@ variable "api_lambda_environment" {
   default     = {}
 }
 
+variable "enable_scheduled_agent" {
+  description = "Create an EventBridge schedule that invokes the operations agent through the backend Lambda."
+  type        = bool
+  default     = false
+}
+
+variable "scheduled_agent_expression" {
+  description = "EventBridge schedule expression for the operations agent."
+  type        = string
+  default     = "rate(1 day)"
+}
+
+variable "scheduled_agent_owner_id" {
+  description = "Workspace owner_user_id used by the scheduled operations agent."
+  type        = string
+  default     = ""
+}
+
+variable "scheduled_agent_allow_drafts" {
+  description = "Allow the scheduled agent to create draft orders when AI Automation is enabled."
+  type        = bool
+  default     = false
+}
+
 variable "additional_cors_origins" {
   description = "Extra frontend origins allowed by API Gateway and Lambda CORS"
   type        = list(string)

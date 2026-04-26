@@ -61,6 +61,26 @@ class DynamoDBStoreTests(unittest.TestCase):
         self.assertTrue(any(item.movement_id == movement.movement_id for item in reloaded.list_inventory_movements()))
         self.assertTrue(any(item.order_id == order.order_id for item in reloaded.list_orders()))
 
+    def test_workspaces_are_isolated_by_owner_user_id(self) -> None:
+        store_a = self.store_module.DynamoDBStore(owner_user_id="tenant-a")
+        store_b = self.store_module.DynamoDBStore(owner_user_id="tenant-b")
+        store_a.create_product(
+            self.schemas.CreateProductRequest(
+                sku="TENANT-A-ONLY",
+                name="Tenant A Product",
+                category="Isolation",
+                current_stock=10,
+            )
+        )
+        store_a.run_operations_agent(self.schemas.AgentRunRequest(agent_name="inventory_risk_agent"))
+
+        reloaded_a = self.store_module.DynamoDBStore(owner_user_id="tenant-a")
+        reloaded_b = self.store_module.DynamoDBStore(owner_user_id="tenant-b")
+
+        self.assertTrue(any(product.sku == "TENANT-A-ONLY" for product in reloaded_a.list_products()))
+        self.assertFalse(any(product.sku == "TENANT-A-ONLY" for product in reloaded_b.list_products()))
+        self.assertEqual(len(reloaded_b.list_agent_runs()), 0)
+
     def test_receive_purchase_order_updates_stock_and_status(self) -> None:
         store = self.store_module.DynamoDBStore(owner_user_id="owner-receive")
         product = store.list_products()[0]
