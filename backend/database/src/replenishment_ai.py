@@ -24,6 +24,7 @@ class OpenAIReplenishmentNarrator:
         self.api_key = os.getenv("OPENAI_API_KEY")
         self.model = os.getenv("OPENAI_MODEL", "gpt-5-mini")
         self.reasoning_effort = os.getenv("OPENAI_REASONING_EFFORT")
+        self.timeout_seconds = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "8"))
         self.last_audit_event: dict[str, Any] | None = None
 
     @property
@@ -107,7 +108,7 @@ class OpenAIReplenishmentNarrator:
             }
             return None
 
-        client = OpenAI(api_key=self.api_key)
+        client = OpenAI(api_key=self.api_key, timeout=self.timeout_seconds)
         try:
             response = client.responses.create(**request_kwargs)
             token_usage = self._token_usage_from_response(response)

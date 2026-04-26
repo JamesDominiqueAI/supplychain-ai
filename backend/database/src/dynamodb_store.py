@@ -1042,6 +1042,27 @@ class DynamoDBStore:
         )
         return ChatResponse(answer=answer, used_ai=False, confidence="medium")
 
+    def get_rule_based_morning_brief(self) -> MorningBriefResponse:
+        latest_report = self.list_reports()[0] if self.list_reports() else None
+        health = self.inventory_health()
+        orders = self.list_orders()
+        anomalies = self.list_anomaly_insights()
+        priorities: list[str] = []
+        critical_items = [item for item in health if item.risk_level == "critical"]
+        if critical_items:
+            priorities.append(f"Review critical stock on {', '.join(item.sku for item in critical_items[:3])} before opening purchasing.")
+        late_orders = [item for item in orders if item.is_late]
+        if late_orders:
+            priorities.append(f"Follow up on {len(late_orders)} late order(s), starting with {late_orders[0].sku}.")
+        if latest_report:
+            priorities.append(
+                f"Latest replenishment run recommends {latest_report.recommendations[:1][0].sku if latest_report.recommendations else 'no SKUs'} as the top purchase focus."
+            )
+        if not priorities:
+            priorities.append("No urgent stock or supplier issues are active right now.")
+        summary = f"You have {len(critical_items)} critical item(s), {len(late_orders)} late order(s), and {len(anomalies)} anomaly signal(s) this morning."
+        return MorningBriefResponse(summary=summary, priorities=priorities[:4], used_ai=False, confidence="medium")
+
     def get_morning_brief(self) -> MorningBriefResponse:
         latest_report = self.list_reports()[0] if self.list_reports() else None
         health = self.inventory_health()
@@ -1068,21 +1089,7 @@ class DynamoDBStore:
                     used_ai=True,
                     confidence=ai_brief.get("confidence", "medium"),
                 )
-        priorities: list[str] = []
-        critical_items = [item for item in health if item.risk_level == "critical"]
-        if critical_items:
-            priorities.append(f"Review critical stock on {', '.join(item.sku for item in critical_items[:3])} before opening purchasing.")
-        late_orders = [item for item in orders if item.is_late]
-        if late_orders:
-            priorities.append(f"Follow up on {len(late_orders)} late order(s), starting with {late_orders[0].sku}.")
-        if latest_report:
-            priorities.append(
-                f"Latest replenishment run recommends {latest_report.recommendations[:1][0].sku if latest_report.recommendations else 'no SKUs'} as the top purchase focus."
-            )
-        if not priorities:
-            priorities.append("No urgent stock or supplier issues are active right now.")
-        summary = f"You have {len(critical_items)} critical item(s), {len(late_orders)} late order(s), and {len(anomalies)} anomaly signal(s) this morning."
-        return MorningBriefResponse(summary=summary, priorities=priorities[:4], used_ai=False, confidence="medium")
+        return self.get_rule_based_morning_brief()
 
     def analyze_scenario(self, request: ScenarioRequest) -> ScenarioAnalysisResponse:
         latest_report = self.list_reports()[0] if self.list_reports() else None

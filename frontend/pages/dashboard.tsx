@@ -127,6 +127,9 @@ function OverviewPage() {
   const [autoOrderMessage, setAutoOrderMessage] = useState<string | null>(null);
   const [autoOrdering, setAutoOrdering] = useState(false);
   const summaryQuery = useWorkspaceQuery<DashboardSummaryResponse>(getToken, "/api/dashboard/summary");
+  const briefQuery = useWorkspaceQuery<MorningBriefResponse>(getToken, "/api/ai/brief", {
+    enabled: Boolean(summaryQuery.data?.business.ai_enabled),
+  });
 
   const business = summaryQuery.data?.business || null;
   const health = summaryQuery.data?.inventory_health || [];
@@ -134,11 +137,11 @@ function OverviewPage() {
   const report = summaryQuery.data?.latest_report || null;
   const forecasts = summaryQuery.data?.forecasts || [];
   const anomalies = summaryQuery.data?.anomalies || [];
-  const morningBrief = summaryQuery.data?.morning_brief || null;
+  const morningBrief = briefQuery.data || summaryQuery.data?.morning_brief || null;
   const loading = summaryQuery.loading;
-  const aiLoading = summaryQuery.loading;
+  const aiLoading = briefQuery.loading && !briefQuery.data;
   const error = summaryQuery.error;
-  const aiError = summaryQuery.error;
+  const aiError = briefQuery.error;
 
   const critical = health.filter((item) => item.risk_level === "critical").length;
   const watch = health.filter((item) => item.risk_level !== "critical" && item.risk_level !== "healthy").length;
@@ -170,7 +173,7 @@ function OverviewPage() {
         },
       });
       setAutoOrderMessage(result.summary);
-      await summaryQuery.revalidate();
+      await Promise.all([summaryQuery.revalidate(), briefQuery.revalidate()]);
     } finally {
       setAutoOrdering(false);
     }

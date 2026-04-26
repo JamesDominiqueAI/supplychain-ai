@@ -155,7 +155,7 @@ async def get_dashboard_summary(store: "DynamoDBStore" = Depends(get_store)):
         "latest_report": reports[0] if reports else None,
         "forecasts": store.list_forecast_insights(),
         "anomalies": store.list_anomaly_insights(),
-        "morning_brief": store.get_morning_brief(),
+        "morning_brief": store.get_rule_based_morning_brief(),
     }
 
 
