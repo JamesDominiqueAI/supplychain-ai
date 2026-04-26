@@ -257,7 +257,7 @@ export interface ReportComparisonResponse {
 
 export interface AIAuditLog {
   audit_id: string;
-  feature: "chat" | "report" | "brief" | "scenario" | "comparison";
+  feature: "chat" | "report" | "brief" | "scenario" | "comparison" | "agent";
   used_ai: boolean;
   status: "accepted" | "fallback" | "refused";
   input_preview: string;
@@ -268,6 +268,28 @@ export interface AIAuditLog {
   output_tokens?: number | null;
   total_tokens?: number | null;
   created_at: string;
+}
+
+export interface AgentStepResult {
+  step_id: string;
+  tool_name: "inventory_risk_scan" | "late_order_scan" | "cash_replenishment_check" | "draft_replenishment_orders";
+  status: "completed" | "skipped" | "blocked";
+  summary: string;
+  details: string[];
+  created_at: string;
+}
+
+export interface AgentRunResponse {
+  run_id: string;
+  business_id: string;
+  goal: string;
+  status: "completed" | "blocked" | "failed";
+  summary: string;
+  steps: AgentStepResult[];
+  created_orders: PurchaseOrder[];
+  guardrail_notes: string[];
+  created_at: string;
+  completed_at: string;
 }
 
 export interface ObservabilityMetrics {
@@ -496,6 +518,9 @@ function invalidationPathsForMutation(path: string): string[] {
   }
   if (path === "/api/ai/auto-orders") {
     return ["/api/orders", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/suppliers/scorecards", "/api/dashboard/summary"];
+  }
+  if (path === "/api/ai/agents/operations") {
+    return ["/api/ai/agents/runs", "/api/orders", "/api/ai/audit", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/dashboard/summary"];
   }
   if (path === "/api/ai/scenario" || path === "/api/ai/chat") {
     return [];

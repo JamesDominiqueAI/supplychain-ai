@@ -5,6 +5,9 @@ from .replenishment_ai import OpenAIReplenishmentNarrator
 from .schemas import (
     AnalysisJob,
     AIAuditLog,
+    AgentRunRequest,
+    AgentRunResponse,
+    AgentStepResult,
     AnomalyInsight,
     AutoOrderResult,
     Business,
@@ -35,6 +38,9 @@ from .services import ReplenishmentService
 __all__ = [
     "AnalysisJob",
     "AIAuditLog",
+    "AgentRunRequest",
+    "AgentRunResponse",
+    "AgentStepResult",
     "AnomalyInsight",
     "AutoOrderResult",
     "Business",

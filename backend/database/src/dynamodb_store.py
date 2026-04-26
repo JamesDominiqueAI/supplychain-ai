@@ -18,6 +18,9 @@ from notifications import EmailAlertService
 from services import ReplenishmentService
 from schemas import (
     AIAuditLog,
+    AgentRunRequest,
+    AgentRunResponse,
+    AgentStepResult,
     AnalysisJob,
     AnomalyInsight,
     AutoOrderResult,
@@ -69,6 +72,7 @@ class WorkspaceState(BaseModel):
     jobs: list[AnalysisJob] = Field(default_factory=list)
     reports: list[ReplenishmentReport] = Field(default_factory=list)
     orders: list[PurchaseOrder] = Field(default_factory=list)
+    agent_runs: list[AgentRunResponse] = Field(default_factory=list)
     ai_audit_logs: list[AIAuditLog] = Field(default_factory=list)
     order_notification_events: list[OrderNotificationEvent] = Field(default_factory=list)
     critical_alert_state: dict[str, dict[str, str | None]] = Field(default_factory=dict)
@@ -962,6 +966,227 @@ class DynamoDBStore:
             skipped_products=sorted(set(skipped_products)),
             summary=summary,
         )
+
+    def list_agent_runs(self, limit: int = 20) -> list[AgentRunResponse]:
+        safe_limit = max(1, min(limit, 100))
+        return sorted(self.state.agent_runs, key=lambda item: item.created_at, reverse=True)[:safe_limit]
+
+    def _agent_step(
+        self,
+        tool_name: str,
+        status: str,
+        summary: str,
+        details: list[str] | None = None,
+    ) -> AgentStepResult:
+        return AgentStepResult(
+            tool_name=tool_name,
+            status=status,
+            summary=summary,
+            details=details or [],
+        )
+
+    def _agent_goal_is_allowed(self, goal: str) -> bool:
+        normalized = goal.strip().lower()
+        allowed_terms = {
+            "inventory",
+            "stock",
+            "sku",
+            "order",
+            "orders",
+            "supplier",
+            "suppliers",
+            "cash",
+            "replenishment",
+            "purchase",
+            "risk",
+            "late",
+            "delay",
+            "forecast",
+            "warehouse",
+            "business",
+            "materials",
+        }
+        blocked_terms = {
+            "call supplier",
+            "phone supplier",
+            "negotiate",
+            "wire money",
+            "bank transfer",
+            "external purchase",
+            "send payment",
+        }
+        return any(term in normalized for term in allowed_terms) and not any(term in normalized for term in blocked_terms)
+
+    def run_operations_agent(
+        self,
+        request: AgentRunRequest,
+        *,
+        recipient_email: str | None = None,
+    ) -> AgentRunResponse:
+        goal = request.goal.strip()
+        guardrail_notes = [
+            "Agent tools are limited to internal workspace data and draft order creation.",
+            "External supplier calls, payments, and off-platform purchasing are blocked.",
+        ]
+        if not self.business.ai_enabled:
+            guardrail_notes.append("AI is disabled, so the agent is blocked before planning.")
+            run = AgentRunResponse(
+                business_id=self.business.business_id,
+                goal=goal,
+                status="blocked",
+                summary="Agent run blocked because AI is disabled in Settings.",
+                steps=[],
+                guardrail_notes=guardrail_notes,
+            )
+            self.state.agent_runs.insert(0, run)
+            self.state.agent_runs = self.state.agent_runs[:100]
+            self._record_ai_audit(
+                feature="agent",
+                used_ai=False,
+                status="refused",
+                input_preview=goal,
+                output_preview=run.summary,
+                confidence="high",
+                reason="AI disabled.",
+            )
+            self._save_state()
+            return run
+
+        if not self._agent_goal_is_allowed(goal):
+            guardrail_notes.append("Goal is outside inventory operations or asks for unsupported external action.")
+            run = AgentRunResponse(
+                business_id=self.business.business_id,
+                goal=goal,
+                status="blocked",
+                summary="Agent run blocked by allowed-topic guardrails.",
+                steps=[],
+                guardrail_notes=guardrail_notes,
+            )
+            self.state.agent_runs.insert(0, run)
+            self.state.agent_runs = self.state.agent_runs[:100]
+            self._record_ai_audit(
+                feature="agent",
+                used_ai=False,
+                status="refused",
+                input_preview=goal,
+                output_preview=run.summary,
+                confidence="high",
+                reason="Unsupported agent goal.",
+            )
+            self._save_state()
+            return run
+
+        steps: list[AgentStepResult] = []
+        health = self.inventory_health()
+        risky_items = [item for item in health if item.risk_level in {"critical", "high", "watch"}]
+        steps.append(
+            self._agent_step(
+                "inventory_risk_scan",
+                "completed",
+                f"Found {len(risky_items)} inventory item(s) needing attention.",
+                [
+                    f"{item.product_name} ({item.sku}): {item.current_stock} on hand, {item.days_of_cover} days cover, risk {item.risk_level}."
+                    for item in risky_items[:5]
+                ],
+            )
+        )
+
+        late_orders = [order for order in self.list_orders() if order.is_late]
+        steps.append(
+            self._agent_step(
+                "late_order_scan",
+                "completed",
+                f"Found {len(late_orders)} late order(s).",
+                [
+                    f"{order.product_name} ({order.sku}) is late by {order.days_late} day(s), status {order.status.replace('_', ' ')}."
+                    for order in late_orders[:5]
+                ],
+            )
+        )
+
+        latest_report = self.list_reports()[0] if self.list_reports() else None
+        if latest_report is None:
+            job = self.run_replenishment_job()
+            latest_report = self.list_reports()[0] if self.list_reports() else None
+            report_detail = f"Generated replenishment report through job {job.job_id}."
+        else:
+            report_detail = f"Used latest replenishment report {latest_report.report_id}."
+        spend = latest_report.total_recommended_spend if latest_report else 0
+        cash_summary = (
+            f"Recommended spend is {spend:g} {self.business.currency} against "
+            f"{self.business.available_cash:g} {self.business.currency} available cash."
+        )
+        steps.append(
+            self._agent_step(
+                "cash_replenishment_check",
+                "completed",
+                cash_summary,
+                [
+                    report_detail,
+                    "Cash pressure detected; split or defer lower-risk orders."
+                    if spend > self.business.available_cash
+                    else "Recommended spend fits available cash.",
+                ],
+            )
+        )
+
+        created_orders: list[PurchaseOrder] = []
+        if request.allow_order_drafts and self.business.ai_automation_enabled:
+            auto_result = self.auto_place_orders(recipient_email=recipient_email)
+            created_orders = auto_result.created_orders
+            steps.append(
+                self._agent_step(
+                    "draft_replenishment_orders",
+                    "completed",
+                    auto_result.summary,
+                    [f"Drafted {order.quantity} units of {order.product_name} ({order.sku})." for order in created_orders[:5]],
+                )
+            )
+        elif request.allow_order_drafts:
+            steps.append(
+                self._agent_step(
+                    "draft_replenishment_orders",
+                    "blocked",
+                    "Draft order creation was requested but AI automation is disabled.",
+                    ["Enable AI Automation in Settings before the agent can draft orders."],
+                )
+            )
+        else:
+            steps.append(
+                self._agent_step(
+                    "draft_replenishment_orders",
+                    "skipped",
+                    "Draft order creation was not requested for this run.",
+                    ["The agent monitored and planned only; no orders were created."],
+                )
+            )
+
+        summary = (
+            f"Agent completed {len(steps)} tool step(s): {len(risky_items)} risky item(s), "
+            f"{len(late_orders)} late order(s), and {len(created_orders)} draft order(s) created."
+        )
+        run = AgentRunResponse(
+            business_id=self.business.business_id,
+            goal=goal,
+            status="completed",
+            summary=summary,
+            steps=steps,
+            created_orders=created_orders,
+            guardrail_notes=guardrail_notes,
+        )
+        self.state.agent_runs.insert(0, run)
+        self.state.agent_runs = self.state.agent_runs[:100]
+        self._record_ai_audit(
+            feature="agent",
+            used_ai=True,
+            status="accepted",
+            input_preview=goal,
+            output_preview=summary,
+            confidence="high",
+            reason="Operations agent executed bounded internal tools.",
+        )
+        self._save_state()
+        return run
 
     def _rule_based_workspace_answer(
         self,

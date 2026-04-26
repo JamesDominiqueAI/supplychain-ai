@@ -326,6 +326,53 @@ class AutoOrderResult(BaseModel):
     summary: str
 
 
+AgentToolName = Literal[
+    "inventory_risk_scan",
+    "late_order_scan",
+    "cash_replenishment_check",
+    "draft_replenishment_orders",
+]
+
+
+class AgentRunRequest(BaseModel):
+    goal: str = Field(
+        default="Monitor today's inventory risks, late orders, cash pressure, and safe replenishment actions.",
+        min_length=8,
+        max_length=240,
+    )
+    allow_order_drafts: bool = False
+
+
+class AgentStepResult(BaseModel):
+    step_id: str = Field(default_factory=new_id)
+    tool_name: AgentToolName
+    status: Literal["completed", "skipped", "blocked"]
+    summary: str
+    details: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=utc_now)
+
+    @field_validator("created_at", mode="after")
+    def normalize_created_at(cls, value: datetime) -> datetime:
+        return ensure_utc(value)
+
+
+class AgentRunResponse(BaseModel):
+    run_id: str = Field(default_factory=new_id)
+    business_id: str
+    goal: str
+    status: Literal["completed", "blocked", "failed"]
+    summary: str
+    steps: list[AgentStepResult]
+    created_orders: list[PurchaseOrder] = Field(default_factory=list)
+    guardrail_notes: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=utc_now)
+    completed_at: datetime = Field(default_factory=utc_now)
+
+    @field_validator("created_at", "completed_at", mode="after")
+    def normalize_datetimes(cls, value: datetime) -> datetime:
+        return ensure_utc(value)
+
+
 class ChatRequest(BaseModel):
     message: str = Field(min_length=2)
 
@@ -388,7 +435,7 @@ class UpdateBusinessSettingsRequest(BaseModel):
 class AIAuditLog(BaseModel):
     audit_id: str = Field(default_factory=new_id)
     business_id: str
-    feature: Literal["chat", "report", "brief", "scenario", "comparison"]
+    feature: Literal["chat", "report", "brief", "scenario", "comparison", "agent"]
     used_ai: bool
     status: Literal["accepted", "fallback", "refused"]
     input_preview: str

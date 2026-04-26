@@ -32,6 +32,8 @@ except ImportError:  # pragma: no cover - optional in deployed Lambda bundle
     load_dotenv = None
 
 from schemas import (
+    AgentRunRequest,
+    AgentRunResponse,
     ChatRequest,
     CreateInventoryMovementRequest,
     CreateProductRequest,
@@ -276,6 +278,23 @@ async def create_auto_orders(
     actor_email: str | None = Header(default=None, alias="X-Actor-Email"),
 ):
     return store.auto_place_orders(recipient_email=actor_email)
+
+
+@app.get("/api/ai/agents/runs")
+async def list_agent_runs(
+    limit: int = Query(default=10, ge=1, le=50),
+    store: DynamoDBStore = Depends(get_store),
+) -> list[AgentRunResponse]:
+    return store.list_agent_runs(limit=limit)
+
+
+@app.post("/api/ai/agents/operations")
+async def run_operations_agent(
+    payload: AgentRunRequest,
+    store: DynamoDBStore = Depends(get_store),
+    actor_email: str | None = Header(default=None, alias="X-Actor-Email"),
+) -> AgentRunResponse:
+    return store.run_operations_agent(payload, recipient_email=actor_email)
 
 
 @app.post("/api/ai/chat")

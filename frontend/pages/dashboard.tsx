@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { WorkspaceShell } from "../components/WorkspaceShell";
 import {
+  AgentRunResponse,
   AnomalyInsight,
   AutoOrderResult,
   authorizedFetch,
@@ -126,6 +127,8 @@ function OverviewPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [autoOrderMessage, setAutoOrderMessage] = useState<string | null>(null);
   const [autoOrdering, setAutoOrdering] = useState(false);
+  const [agentRun, setAgentRun] = useState<AgentRunResponse | null>(null);
+  const [agentRunning, setAgentRunning] = useState(false);
   const summaryQuery = useWorkspaceQuery<DashboardSummaryResponse>(getToken, "/api/dashboard/summary");
   const briefQuery = useWorkspaceQuery<MorningBriefResponse>(getToken, "/api/ai/brief", {
     enabled: Boolean(summaryQuery.data?.business.ai_enabled),
@@ -176,6 +179,26 @@ function OverviewPage() {
       await Promise.all([summaryQuery.revalidate(), briefQuery.revalidate()]);
     } finally {
       setAutoOrdering(false);
+    }
+  }
+
+  async function runOperationsAgent() {
+    setAgentRunning(true);
+    try {
+      const result = await authorizedFetch<AgentRunResponse>(getToken, "/api/ai/agents/operations", {
+        method: "POST",
+        headers: {
+          "X-Actor-Email": user?.primaryEmailAddress?.emailAddress || "",
+        },
+        body: JSON.stringify({
+          goal: "Monitor today's inventory risks, late orders, cash pressure, and safe replenishment actions.",
+          allow_order_drafts: Boolean(business?.ai_automation_enabled),
+        }),
+      });
+      setAgentRun(result);
+      await Promise.all([summaryQuery.revalidate(), briefQuery.revalidate()]);
+    } finally {
+      setAgentRunning(false);
     }
   }
 
@@ -309,6 +332,52 @@ function OverviewPage() {
                       <div className="notice info">Enable both `Use AI` and `AI Automation` in Settings before automatic order placement can run.</div>
                     ) : null}
                     {autoOrderMessage ? <div className="notice info">{autoOrderMessage}</div> : null}
+                    <article className="history-card">
+                      <div className="history-topline">
+                        <strong>Operations Agent</strong>
+                        <span className={`risk ${agentRun?.status === "completed" ? "healthy" : "watch"}`}>
+                          {agentRun?.status || "ready"}
+                        </span>
+                      </div>
+                      <p>
+                        Runs a guarded internal workflow: scan risky SKUs, check late orders, review cash pressure,
+                        and draft replenishment orders only when automation is enabled.
+                      </p>
+                    </article>
+                    <button
+                      className="button primary wide-button"
+                      onClick={runOperationsAgent}
+                      disabled={agentRunning || !business?.ai_enabled}
+                    >
+                      {agentRunning ? "Running Agent..." : "Run Operations Agent"}
+                    </button>
+                    {!business?.ai_enabled ? (
+                      <div className="notice info">Enable `Use AI` in Settings before the operations agent can run.</div>
+                    ) : null}
+                    {agentRun ? (
+                      <div className="history-card">
+                        <div className="history-topline">
+                          <strong>Latest Agent Run</strong>
+                          <span>{agentRun.steps.length} tool steps</span>
+                        </div>
+                        <p>{agentRun.summary}</p>
+                        <div className="answer-content">
+                          {agentRun.steps.map((step) => (
+                            <article className="answer-risk-card" key={step.step_id}>
+                              <strong>{step.tool_name.replace(/_/g, " ")}</strong>
+                              <p>{step.summary}</p>
+                              {step.details.length ? (
+                                <ul className="answer-list">
+                                  {step.details.map((detail, index) => (
+                                    <li key={`${step.step_id}-${index}`}>{detail}</li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                            </article>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                     <form className="form-card" onSubmit={askAI}>
                       <div className="form-card-header">
                         <h3>Ask Workspace AI</h3>

@@ -157,6 +157,34 @@ class DynamoDBStoreTests(unittest.TestCase):
         self.assertGreaterEqual(len(result.created_orders), 1)
         self.assertTrue(all(order.status == "draft" for order in result.created_orders))
 
+    def test_operations_agent_records_guarded_tool_steps(self) -> None:
+        store = self.store_module.DynamoDBStore(owner_user_id="owner-agent")
+        store.update_business_settings(
+            self.schemas.UpdateBusinessSettingsRequest(ai_enabled=True, ai_automation_enabled=False)
+        )
+
+        result = store.run_operations_agent(
+            self.schemas.AgentRunRequest(allow_order_drafts=True),
+            recipient_email="owner@example.com",
+        )
+
+        self.assertEqual(result.status, "completed")
+        self.assertGreaterEqual(len(result.steps), 4)
+        self.assertEqual(result.created_orders, [])
+        self.assertTrue(any(step.tool_name == "draft_replenishment_orders" and step.status == "blocked" for step in result.steps))
+        self.assertEqual(store.list_agent_runs()[0].run_id, result.run_id)
+
+    def test_operations_agent_blocks_external_actions(self) -> None:
+        store = self.store_module.DynamoDBStore(owner_user_id="owner-agent-block")
+
+        result = store.run_operations_agent(
+            self.schemas.AgentRunRequest(goal="Call supplier and negotiate payment today."),
+            recipient_email="owner@example.com",
+        )
+
+        self.assertEqual(result.status, "blocked")
+        self.assertIn("guardrails", result.summary)
+
     def test_failed_order_notifications_can_be_retried(self) -> None:
         store = self.store_module.DynamoDBStore(owner_user_id="owner-retry-email")
         store.email_alerts.send_order_placed_alert = lambda *args, **kwargs: (False, "temporary email outage")
