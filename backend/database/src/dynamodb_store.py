@@ -951,6 +951,72 @@ class DynamoDBStore:
             summary=summary,
         )
 
+    def _rule_based_workspace_answer(
+        self,
+        *,
+        health: list[InventoryHealthItem],
+        orders: list[PurchaseOrder],
+        latest_report: ReplenishmentReport | None,
+        anomalies: list[AnomalyInsight],
+        forecasts: list[ForecastInsight],
+    ) -> str:
+        risky_items = [item for item in health if item.risk_level in {"critical", "high", "watch"}][:5]
+        late_orders = [item for item in orders if item.is_late][:5]
+        lines: list[str] = []
+
+        if risky_items:
+            lines.append(f"Inventory risks to focus today: {len(risky_items)} item(s) need attention.")
+            for index, item in enumerate(risky_items, start=1):
+                forecast = next((entry for entry in forecasts if entry.product_id == item.product_id), None)
+                recommendation = (
+                    next((rec for rec in latest_report.recommendations if rec.product_id == item.product_id), None)
+                    if latest_report
+                    else None
+                )
+                demand_note = (
+                    f" Forecast 7d demand is about {forecast.predicted_7d_demand:g} units with a {forecast.trend_direction} trend."
+                    if forecast
+                    else ""
+                )
+                order_note = (
+                    f" Recommended order is {recommendation.recommended_order_qty} units, estimated at {recommendation.estimated_cost:g} {self.business.currency}."
+                    if recommendation
+                    else " Review reorder quantity before committing cash."
+                )
+                lines.append(
+                    f"{index}) {item.product_name} ({item.sku}): {item.risk_level} risk, {item.current_stock} on hand, "
+                    f"{item.days_of_cover:g} days of cover, reorder point {item.reorder_point}, lead time {item.lead_time_days} day(s)."
+                    f"{demand_note}{order_note}"
+                )
+        else:
+            lines.append("Inventory risks to focus today: no critical or high-risk products are active right now.")
+
+        if late_orders:
+            lines.append(f"Late orders: {len(late_orders)} open order(s) are late.")
+            for index, order in enumerate(late_orders, start=1):
+                lines.append(
+                    f"{index}) {order.product_name} ({order.sku}): {order.quantity} units from "
+                    f"{order.supplier_name or 'unassigned supplier'}, status {order.status.replace('_', ' ')}, "
+                    f"late by {order.days_late} day(s). Follow up with the supplier or update the expected delivery date."
+                )
+        else:
+            lines.append("Late orders: none currently.")
+
+        if latest_report:
+            lines.append(
+                f"Cash check: latest recommended spend is {latest_report.total_recommended_spend:g} {self.business.currency} "
+                f"against available cash of {self.business.available_cash:g} {self.business.currency}. "
+                f"{'Prioritize only critical items and split orders.' if latest_report.total_recommended_spend > self.business.available_cash else 'The current plan fits available cash.'}"
+            )
+        else:
+            lines.append(f"Cash check: available cash is {self.business.available_cash:g} {self.business.currency}. Generate a replenishment report for spend guidance.")
+
+        if anomalies:
+            lines.append("Additional signals: " + " ".join(f"{item.title}: {item.detail}" for item in anomalies[:3]))
+
+        lines.append("Action plan: handle late orders first, then buy or draft orders for critical products, and delay lower-risk purchases if cash is tight.")
+        return "\n".join(lines)
+
     def chat_answer(self, question: str) -> ChatResponse:
         input_guardrail = validate_chat_input(question)
         if not input_guardrail.allowed:
@@ -1006,18 +1072,7 @@ class DynamoDBStore:
                 )
 
         question_lower = question.lower()
-        if "critical" in question_lower:
-            critical_items = [item.sku for item in health if item.risk_level == "critical"]
-            answer = f"Critical items right now are {', '.join(critical_items)}." if critical_items else "There are no critical items right now."
-        elif "late" in question_lower or "delay" in question_lower:
-            late_orders = [item for item in orders if item.is_late]
-            answer = (
-                f"There are {len(late_orders)} late order(s). "
-                + " ".join(f"{item.sku} is late by {item.days_late} day(s)." for item in late_orders[:3])
-                if late_orders
-                else "There are no late orders right now."
-            )
-        elif "supplier" in question_lower:
+        if "supplier" in question_lower and not any(term in question_lower for term in ("risk", "late", "delay", "stock", "inventory")):
             risky_supplier = scorecards[0] if scorecards else None
             answer = (
                 f"The supplier needing the most attention is {risky_supplier.supplier_name}. It has {risky_supplier.late_open_orders} late open order(s) and {round(risky_supplier.on_time_rate * 100)}% on-time performance."
@@ -1025,11 +1080,12 @@ class DynamoDBStore:
                 else "There is not enough supplier activity yet to rank supplier performance."
             )
         else:
-            answer = (
-                f"Available cash is {self.business.available_cash} {self.business.currency}. "
-                f"There are {len([item for item in health if item.risk_level == 'critical'])} critical items, "
-                f"{len([item for item in orders if item.is_late])} late orders, and "
-                f"{len(anomalies)} anomaly signal(s) worth reviewing."
+            answer = self._rule_based_workspace_answer(
+                health=health,
+                orders=orders,
+                latest_report=latest_report,
+                anomalies=anomalies,
+                forecasts=forecasts,
             )
         self._record_ai_audit(
             feature="chat",

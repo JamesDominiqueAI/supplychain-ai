@@ -203,6 +203,28 @@ class DynamoDBStoreTests(unittest.TestCase):
 
         self.assertEqual(label, "You")
 
+    def test_rule_based_chat_gives_detailed_inventory_and_late_order_answer(self) -> None:
+        store = self.store_module.DynamoDBStore(owner_user_id="owner-chat-detail")
+        store.update_business_settings(self.schemas.UpdateBusinessSettingsRequest(ai_enabled=False))
+        product = store.list_products()[0]
+        order = store.create_purchase_order(
+            self.schemas.CreatePurchaseOrderRequest(
+                product_id=product.product_id,
+                quantity=3,
+                expected_delivery_date=self.store_module.utc_now() - self.store_module.timedelta(days=4),
+            ),
+            status="in_transit",
+        )
+
+        answer = store.chat_answer("What inventory risks and late orders should I focus on today?")
+
+        self.assertFalse(answer.used_ai)
+        self.assertIn("Inventory risks to focus today", answer.answer)
+        self.assertIn("Late orders:", answer.answer)
+        self.assertIn(order.sku, answer.answer)
+        self.assertIn("late by 4 day(s)", answer.answer)
+        self.assertIn("Action plan:", answer.answer)
+
     def test_ai_audit_logs_capture_token_usage(self) -> None:
         store = self.store_module.DynamoDBStore(owner_user_id="owner-ai-tokens")
 
