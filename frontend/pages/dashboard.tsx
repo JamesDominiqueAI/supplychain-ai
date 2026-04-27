@@ -1,7 +1,7 @@
 import { SignedIn, SignedOut, useAuth, useUser } from "@clerk/nextjs";
 import Head from "next/head";
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { WorkspaceShell } from "../components/WorkspaceShell";
 import {
@@ -129,6 +129,7 @@ function OverviewPage() {
   const [autoOrdering, setAutoOrdering] = useState(false);
   const [agentRun, setAgentRun] = useState<AgentRunResponse | null>(null);
   const [agentRunning, setAgentRunning] = useState(false);
+  const agentAutoRunKeyRef = useRef<string | null>(null);
   const summaryQuery = useWorkspaceQuery<DashboardSummaryResponse>(getToken, "/api/dashboard/summary");
   const briefQuery = useWorkspaceQuery<MorningBriefResponse>(getToken, "/api/ai/brief", {
     enabled: Boolean(summaryQuery.data?.business.ai_enabled),
@@ -183,6 +184,9 @@ function OverviewPage() {
   }
 
   async function runOperationsAgent() {
+    if (!business?.ai_enabled) {
+      return;
+    }
     setAgentRunning(true);
     try {
       const result = await authorizedFetch<AgentRunResponse>(getToken, "/api/ai/agents/operations", {
@@ -202,6 +206,18 @@ function OverviewPage() {
       setAgentRunning(false);
     }
   }
+
+  useEffect(() => {
+    if (!business?.business_id || !business.ai_enabled) {
+      return;
+    }
+    const runKey = `${business.business_id}:${business.ai_automation_enabled ? "drafts" : "monitor"}`;
+    if (agentAutoRunKeyRef.current === runKey) {
+      return;
+    }
+    agentAutoRunKeyRef.current = runKey;
+    void runOperationsAgent();
+  }, [business?.business_id, business?.ai_enabled, business?.ai_automation_enabled]);
 
   return (
     <>
@@ -341,20 +357,14 @@ function OverviewPage() {
                         </span>
                       </div>
                       <p>
-                        Runs a guarded agent team: Operations Manager coordinates Inventory Risk, Supplier Delay,
-                        and Cash Replenishment agents. Draft orders only happen when automation is enabled.
+                        Runs automatically when the dashboard opens. Operations Manager coordinates Inventory Risk,
+                        Supplier Delay, and Cash Replenishment agents. Draft orders only happen when automation is enabled.
                       </p>
                     </article>
-                    <button
-                      className="button primary wide-button"
-                      onClick={runOperationsAgent}
-                      disabled={agentRunning || !business?.ai_enabled}
-                    >
-                      {agentRunning ? "Running Agent Team..." : "Run Agent Team"}
-                    </button>
                     {!business?.ai_enabled ? (
                       <div className="notice info">Enable `Use AI` in Settings before the operations agent can run.</div>
                     ) : null}
+                    {agentRunning ? <div className="notice info">Agent team is running automatically...</div> : null}
                     {agentRun ? (
                       <div className="history-card">
                         <div className="history-topline">
