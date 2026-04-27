@@ -1,8 +1,14 @@
 # Operations Narrator
 
-This module turns structured outputs into owner-facing summaries.
+Narration is handled as a guarded AI layer with deterministic fallback text.
 
-Good outputs:
-- “You are likely to stock out of rice in 5 days.”
-- “Supplier A is now your biggest operational risk.”
-- “You should delay low-priority purchases to protect cash.”
+Current narration surfaces:
+
+- replenishment report summary and actions
+- morning brief
+- workspace chat
+- cash scenario explanation
+- report comparison
+- operations-agent run summary
+
+The narrator may improve wording and prioritization, but it cannot change stock counts, order status, supplier state, or purchase quantities without validated backend logic.

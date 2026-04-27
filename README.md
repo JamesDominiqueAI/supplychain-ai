@@ -1,89 +1,77 @@
 # SupplyChain AI
 
-SupplyChain AI is a production-style AI platform for small businesses that manage inventory manually or through fragmented channels like WhatsApp, spreadsheets, and handwritten ledgers.
+SupplyChain AI is a production-style inventory intelligence platform for small businesses that manage stock, suppliers, and purchase decisions with limited tooling.
 
-The system helps owners and operators:
-- track inventory across one or more stores
-- predict stockouts and restocking windows
-- recommend purchase orders based on demand, lead time, and cash constraints
-- summarize business health in plain language
-- surface operational risks like supplier delay, low-stock exposure, and dead inventory
+The app helps owners and operators:
 
-This project is intentionally designed with the same depth as Alex:
-- frontend web app
-- backend API
-- async job workflows
-- multi-agent analysis
-- cloud deployment with Terraform
-- monitoring and enterprise controls
+- track products, suppliers, inventory movements, and purchase orders
+- identify low-stock and stockout risk
+- generate cash-aware replenishment reports
+- draft safe purchase orders
+- compare supplier reliability and delivery exposure
+- ask workspace-specific AI questions with guardrails
+- audit AI decisions, fallback behavior, and token usage
 
-## Why This Project
+## What Is Built
 
-This project fits especially well if you care about:
-- Haiti and similar markets where many businesses still operate informally
-- supply chain and logistics problems
-- building AI systems that are useful beyond demos
-- showing both technical depth and market understanding
+- Next.js workspace app with Clerk auth
+- FastAPI backend with tenant-scoped APIs
+- DynamoDB workspace persistence with local JSON fallback
+- deterministic forecasting, inventory health, replenishment, supplier scorecards, anomalies, and cash logic
+- guarded AI chat, morning brief, report comparison, scenario analysis, and multi-agent operations runs
+- draft-first AI auto-orders and order notification events
+- observability endpoint and deterministic evaluation script
+- Terraform for DynamoDB, Lambda/API Gateway, S3/CloudFront, CloudWatch, and SNS
+- static frontend deployment path and Lambda packaging script
 
 ## Product Vision
 
-Small businesses should not need ERP software or a data science team to answer:
+Small businesses should not need a full ERP system or a data science team to answer:
+
 - What am I running out of next week?
 - What should I buy today with limited cash?
 - Which products are moving too slowly?
 - Which supplier is putting me at risk?
 - What is the story of my business this month?
 
-SupplyChain AI answers those questions with a mix of structured analytics and AI agents.
+SupplyChain AI answers those questions with deterministic operations logic first, then optional AI explanations and agent reviews.
 
 ## Core User Types
 
-- Owner: wants decisions, cash visibility, and plain-English summaries
-- Store manager: wants low-stock alerts and replenishment guidance
-- Purchasing lead: wants supplier comparisons and suggested orders
-- Operations analyst: wants dashboards, exportable reports, and traceable logic
+- Owner: wants decisions, cash visibility, and plain-English summaries.
+- Store manager: records movements, receives orders, and watches stock risk.
+- Purchasing lead: reviews recommended orders and supplier reliability.
+- Operations analyst: uses reports, exports, audit logs, and observability signals.
 
 ## Core AI Agents
 
-- Demand Analyst: forecasts demand by SKU and location
-- Replenishment Planner: recommends restocking actions
-- Supplier Risk Analyst: flags delays, concentration risk, and unstable vendors
-- Cash Flow Guard: checks whether recommended purchases fit budget constraints
-- Operations Narrator: writes clear reports for owners and managers
+- Operations Manager Agent: coordinates the specialist review.
+- Inventory Risk Agent: finds critical SKUs and days-of-cover issues.
+- Supplier Delay Agent: reviews late orders and supplier exposure.
+- Cash Replenishment Agent: checks cash pressure and drafts orders only when automation is enabled.
 
-## Suggested Stack
+## Stack
 
-- Frontend: Next.js Pages Router
-- Backend API: FastAPI
-- Async jobs: SQS + Lambda
-- Database: Aurora Serverless v2 PostgreSQL with Data API
-- Auth: Clerk
-- AI orchestration: OpenAI Agents SDK
-- Vector / knowledge layer: S3 Vectors or pgvector depending on scope
-- IaC: Terraform
-- Monitoring: CloudWatch dashboards, alarms, structured logs
+- Frontend: Next.js Pages Router, React, TypeScript, Clerk
+- Backend API: FastAPI, Pydantic, Mangum
+- Storage: DynamoDB in production, local JSON fallback in development/test
+- AI: OpenAI-compatible provider calls with deterministic fallback paths
+- Notifications: Resend-compatible email adapter and persisted notification events
+- Infrastructure: Terraform, Lambda, API Gateway, S3, CloudFront, CloudWatch, SNS
 
 ## Directory Structure
 
 ```text
 supplychain-ai/
 ├── guides/
-│   ├── 1_product_scope.md
-│   ├── 2_data_model.md
-│   ├── 3_backend_api.md
-│   ├── 4_agents.md
-│   ├── 5_frontend.md
-│   ├── 6_cloud_deployment.md
-│   ├── 7_enterprise.md
-│   └── architecture.md
 ├── backend/
 │   ├── api/
+│   ├── database/
 │   ├── planner/
 │   ├── demand/
 │   ├── replenishment/
 │   ├── supplier_risk/
-│   ├── narrator/
-│   └── database/
+│   └── narrator/
 ├── frontend/
 ├── terraform/
 │   ├── 1_foundation/
@@ -91,83 +79,69 @@ supplychain-ai/
 │   ├── 3_agents/
 │   ├── 4_frontend/
 │   └── 5_enterprise/
-└── scripts/
+├── scripts/
+└── PROJECT_PRESENTATION.md
 ```
 
-## MVP Scope
+## Local Development
 
-Build this first:
-- authentication and tenant-aware data model
-- products, suppliers, purchases, stock movements, and inventory balances
-- low-stock dashboard
-- forecast endpoint for top products
-- replenishment recommendation job
-- owner-facing report with cash-aware recommendations
+Run the backend:
 
-Do not start with:
-- advanced route optimization
-- OCR for receipts
-- offline mobile app
-- marketplace integrations
-- multi-country tax logic
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python backend/api/main.py
+```
 
-## Best Starting Point
+Run the frontend:
 
-Start with [guides/1_product_scope.md](/home/ragive/projects/alex/supplychain-ai/guides/1_product_scope.md).
+```bash
+cd frontend
+npm run dev
+```
+
+The frontend discovers local APIs on ports `8010`, `8011`, and `8012` unless `NEXT_PUBLIC_API_URL` is configured.
 
 ## Evaluation And Observability
 
-The API exposes signed-in workspace metrics at `GET /api/observability/metrics`, including request latency, API error rate, AI success/fallback/refusal rates, and token usage summarized from AI audit logs.
-
-Run the local deterministic evaluation scenarios with:
+Run deterministic evaluation scenarios:
 
 ```bash
 python scripts/evaluate_project.py
 ```
 
-Run browser E2E tests after starting both servers and providing Clerk test credentials:
+The evaluation checks seed data, critical stock behavior, replenishment reporting, draft-first auto-orders, chat guardrails, AI audit persistence, multi-agent persistence, and tenant isolation.
+
+The API exposes signed-in workspace metrics at:
+
+```text
+GET /api/observability/metrics
+```
+
+See [guides/8_ai_observability_evaluation.md](guides/8_ai_observability_evaluation.md) for guardrails, metrics, and evaluation details.
+
+## Frontend Build And E2E
+
+```bash
+cd frontend
+npm run build
+```
+
+Browser E2E requires both servers and Clerk test credentials:
 
 ```bash
 cd frontend
 E2E_CLERK_EMAIL="your-test-user@example.com" E2E_CLERK_PASSWORD="..." npm run test:e2e
 ```
 
-See [guides/8_ai_observability_evaluation.md](guides/8_ai_observability_evaluation.md) for the LLM prompts, structured outputs, guardrails, trade-offs, and expected evaluation scenarios.
-
-For AWS deployment, use:
+## AWS Deployment
 
 ```bash
 bash scripts/deploy_aws.sh
 ```
 
-The deploy script will automatically import an existing DynamoDB workspace table into Terraform state
-if the table already exists in AWS but is missing from the local Terraform state.
+The deployment script packages the backend, applies Terraform, builds the frontend with the deployed API URL, uploads static assets to S3, invalidates CloudFront, and applies monitoring.
 
-If AWS blocks the deployment because of IAM permissions, see [guides/9_aws_deployment_runbook.md](guides/9_aws_deployment_runbook.md).
+If AWS blocks deployment because of IAM permissions, see [guides/9_aws_deployment_runbook.md](guides/9_aws_deployment_runbook.md).
 
-## CI/CD
+## Presentation
 
-GitHub Actions runs backend tests, deterministic AI evaluation scenarios, and the frontend build on pull requests and pushes to `main`.
-Pushes to `main` deploy to AWS after CI passes. Manual workflow runs can redeploy any branch, tag, or commit SHA; use that same `git_ref` input to roll back by redeploying an older known-good commit.
-
-Required GitHub secrets:
-
-```text
-AWS_ROLE_ARN
-DEFAULT_AWS_REGION
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-CLERK_SECRET_KEY
-CLERK_JWKS_URL
-CLERK_ISSUER
-OPENAI_API_KEY
-RESEND_API_KEY
-RESEND_FROM_EMAIL
-```
-
-Optional secrets:
-
-```text
-ALARM_EMAIL
-DYNAMODB_TABLE_NAME
-OPENAI_MODEL
-```
+Use [PROJECT_PRESENTATION.md](PROJECT_PRESENTATION.md) for a project walkthrough, architecture summary, AI design, evaluation story, current limitations, and next steps.

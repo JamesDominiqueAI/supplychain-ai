@@ -1,6 +1,6 @@
 # AWS Deployment Runbook
 
-This project deploys with the same practical shape as the Alex project:
+This project deploys as a practical serverless AWS application:
 
 - DynamoDB workspace persistence
 - FastAPI backend packaged as Lambda

@@ -30,7 +30,7 @@ locals {
         width  = 24
         height = 3
         properties = {
-          markdown = "## SupplyChain AI Operations\nThis dashboard follows the alex deployment model: CDN delivery, alarms, and operational visibility."
+          markdown = "## SupplyChain AI Operations\nCDN delivery, API health, alarms, and operational visibility."
         }
       }
     ],

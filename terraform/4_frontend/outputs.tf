@@ -50,7 +50,6 @@ output "deploy_instructions" {
        backend/api/api_lambda.zip
 
     Note:
-    This phase now follows the alex pattern more closely:
-    frontend CDN plus optional backend Lambda + API Gateway in the same deployment layer.
+    This phase deploys the frontend CDN plus optional backend Lambda + API Gateway in the same layer.
   EOT
 }

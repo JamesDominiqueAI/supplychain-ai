@@ -1,13 +1,17 @@
 # Frontend
 
-Suggested pages:
-- `/dashboard`
-- `/inventory`
-- `/suppliers`
-- `/recommendations`
-- `/reports`
+The frontend is a Clerk-protected Next.js workspace for day-to-day supply-chain operations.
 
-Use a layout that makes operational status obvious at a glance.
+Implemented pages:
+
+- `/dashboard`
+- `/products`
+- `/movements`
+- `/orders`
+- `/reports`
+- `/suppliers`
+- `/settings`
+- `/login`
 
 Development:
 
@@ -15,14 +19,16 @@ Development:
 npm run dev
 ```
 
-Static deployment build for `S3 + CloudFront`:
+Production build:
+
+```bash
+npm run build
+```
+
+Static deployment build for S3 and CloudFront:
 
 ```bash
 npm run build:static
 ```
 
-That command:
-
-- switches the app into static export mode
-- temporarily disables Next middleware during export
-- writes deployable assets into `frontend/out`
+The typed API client lives in `lib/workspace-api.ts`. It attaches Clerk tokens, discovers local API ports, caches short-lived reads, and invalidates relevant workspace paths after mutations.

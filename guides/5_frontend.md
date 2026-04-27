@@ -1,41 +1,75 @@
 # Guide 5: Frontend
 
-## Core Screens
+The frontend is a real workspace app built with Next.js Pages Router, React, TypeScript, and Clerk. It is not a landing page: the first authenticated experience is the operational dashboard.
 
-### Dashboard
+## Implemented Screens
 
-- total products
-- low-stock count
-- at-risk suppliers
-- pending POs
-- latest AI summary
+### `/dashboard`
 
-### Inventory Health
+The operations home shows business health, inventory risk, supplier exposure, pending orders, latest report context, forecast and anomaly signals, morning brief, AI chat, and agent controls.
 
-- products by risk level
-- days of cover
-- stockout warning list
+### `/products`
 
-### Suppliers
+Operators can create products with SKU, category, current stock, reorder point, demand, lead time, unit cost, and preferred supplier. This screen supports the core catalog workflow needed before forecasting and ordering.
 
-- reliability score
-- late delivery trends
-- exposure by supplier
+### `/movements`
 
-### Purchase Recommendations
+Operators can record sales, purchases, and adjustments. These movements are the practical stock audit trail and immediately feed inventory health.
 
-- AI-generated suggested purchase list
-- explanation per SKU
-- cash-aware prioritization
+### `/orders`
 
-### Reports
+Operators can place manual orders, review AI-drafted orders, update order status, receive quantities, and see late-order/notification state.
 
-- weekly owner summary
-- downloadable markdown or PDF later
+### `/reports`
+
+Operators can run replenishment analysis, review recommendation history, export CSV reports, compare reports, test cash scenarios, and inspect AI audit events.
+
+### `/suppliers`
+
+Operators can add suppliers and review scorecards with reliability, open orders, delayed orders, fill rate, delay days, and exposure.
+
+### `/settings`
+
+Workspace settings control available cash, AI enablement, automation, notification email, and critical-stock alerts.
+
+## API Integration
+
+The frontend uses `frontend/lib/workspace-api.ts` as the typed API layer. It attaches Clerk session tokens, retries briefly while Clerk finishes loading, caches common reads for short windows, and invalidates paths after mutations.
+
+Local API discovery checks:
+
+- configured `NEXT_PUBLIC_API_URL`
+- current browser host on ports `8010`, `8011`, and `8012`
+- fallback host from `NEXT_PUBLIC_API_HOST`
 
 ## UX Principles
 
-- mobile-friendly
-- plain numbers and plain language
-- no overloaded analytics screens in MVP
-- every recommendation should show “why”
+- Put operational work first: dashboard, products, orders, movements, reports, suppliers, and settings.
+- Show plain explanations next to recommendations.
+- Keep AI visible but accountable through confidence, fallback, audit, and report fields.
+- Make risky actions draft-first.
+- Favor compact management screens over marketing-style composition.
+- Keep the app usable in low-data environments where history may be incomplete.
+
+## Verification
+
+Run a production build:
+
+```bash
+cd frontend
+npm run build
+```
+
+Run browser workflow tests after starting backend and frontend and providing Clerk test credentials:
+
+```bash
+cd frontend
+E2E_CLERK_EMAIL="your-test-user@example.com" E2E_CLERK_PASSWORD="..." npm run test:e2e
+```
+
+Build static assets for S3 and CloudFront:
+
+```bash
+cd frontend
+npm run build:static
+```

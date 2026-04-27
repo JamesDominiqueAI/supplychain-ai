@@ -2,49 +2,71 @@
 
 ## Problem
 
-Many small businesses do not have a clean inventory system. They know the business is under pressure, but they cannot easily answer:
+Many small businesses operate inventory through memory, notebooks, messaging threads, and spreadsheets. They know stock and cash are under pressure, but they cannot easily answer:
+
 - what is selling fastest
 - what is at risk of stockout
 - what should be reordered now
 - whether there is enough cash to buy inventory
 - which supplier is becoming unreliable
+- what changed since the last operations review
 
-## MVP Goal
+## Product Goal
 
-Deliver a system that helps one business:
-- track inventory movements
-- see current inventory health
-- receive restocking recommendations
-- get a weekly AI summary of operational risks and actions
+Deliver a workspace that helps one business track inventory, manage suppliers and orders, generate replenishment recommendations, and receive plain-language operational guidance without adopting a full ERP system.
 
-## MVP User Story
+## Primary User Story
 
-“As a small business owner, I want the system to tell me what to reorder this week, how much to buy, and why, without needing to interpret raw spreadsheets.”
+As a small business owner, I want the system to tell me what to reorder this week, how much to buy, what it will cost, and why, without needing to interpret raw spreadsheets.
 
-## First Release Features
+## Implemented Product Surface
 
-- business and user auth
+- Clerk-protected workspace
 - product catalog
-- supplier catalog
-- purchase orders
+- supplier catalog and scorecards
 - inventory movement tracking
-- stock dashboard
-- forecast job
-- replenishment recommendation report
-- supplier risk summary
+- inventory health dashboard
+- forecast and anomaly signals
+- purchase-order creation and receiving
+- late-order and notification event visibility
+- replenishment report generation
+- CSV report export
+- cash scenario analysis
+- report comparison
+- workspace AI chat with guardrails
+- morning brief
+- multi-agent operations review
+- AI audit and observability metrics
+- settings for cash, AI, automation, notification email, and critical alerts
 
 ## Non-Goals
 
 - accounting system replacement
 - route optimization for delivery fleets
-- enterprise procurement workflows
+- real supplier negotiation or payments
+- external marketplace/POS integrations at launch
+- offline mobile app
 - advanced ML forecasting research
-- marketplace / POS integrations at launch
+- multi-country tax logic
 
 ## Product Principles
 
 - plain language first
-- explain every recommendation
+- deterministic operations logic before AI wording
+- every recommendation should explain why
+- AI must refuse unsupported external actions
+- draft risky actions before execution
 - make low-data environments workable
-- design for unstable connectivity and incomplete records
 - prioritize owner decisions over vanity dashboards
+
+## Demo Narrative
+
+1. Add or review products and suppliers.
+2. Record a sale that pushes a SKU into critical risk.
+3. Open the dashboard and inspect the risk, forecast, anomaly, and morning brief.
+4. Generate a replenishment report.
+5. Review recommended quantities, estimated spend, and actions.
+6. Draft or place a purchase order.
+7. Receive the order and watch inventory recover.
+8. Ask the workspace AI a grounded operations question.
+9. Open the AI audit and observability metrics to show governance.

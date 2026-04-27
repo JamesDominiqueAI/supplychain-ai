@@ -1,20 +1,41 @@
 # Scripts
 
-Suggested utilities:
-- local dev runner
-- seed demo business
-- import CSV data
-- deploy frontend
-- destroy infrastructure
+Implemented utilities:
 
-## AWS Teardown
+- `run_local.py`: local project runner helper.
+- `evaluate_project.py`: deterministic product evaluation with external AI/email disabled.
+- `check_latency.py`: API latency checker for local or deployed APIs.
+- `deploy_aws.sh`: package backend, apply Terraform, build/upload frontend, and apply monitoring.
+- `destroy_aws.sh`: remove the AWS deployment in reverse Terraform order.
 
-Use `scripts/destroy_aws.sh` to remove the AWS deployment created by the Terraform layers.
-The script destroys layers in reverse order, empties the frontend S3 bucket first, and requires
-typing `destroy supplychain-ai` before it deletes anything.
+Run the project evaluation:
 
 ```bash
-scripts/destroy_aws.sh
+python scripts/evaluate_project.py
 ```
 
-Set `SKIP_BUCKET_EMPTY=true` only if you want Terraform to handle the bucket deletion itself.
+Measure API latency:
+
+```bash
+python scripts/check_latency.py --api-url "https://your-api-url" --iterations 5
+```
+
+Protected endpoints require a Clerk token:
+
+```bash
+AUTH_TOKEN="..." python scripts/check_latency.py --api-url "https://your-api-url"
+```
+
+Deploy to AWS:
+
+```bash
+bash scripts/deploy_aws.sh
+```
+
+Destroy AWS resources:
+
+```bash
+bash scripts/destroy_aws.sh
+```
+
+The destroy script asks you to type `destroy supplychain-ai` before deleting resources. Set `SKIP_BUCKET_EMPTY=true` only if you want Terraform to handle frontend bucket deletion itself.

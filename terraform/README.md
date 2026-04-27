@@ -1,20 +1,19 @@
 # Terraform
 
-This repository now follows the same phased Terraform idea used in the `alex`
-project: keep each major deployment concern in its own independent directory so
-we can deploy incrementally without forcing the whole platform to be perfect on
-day one.
+The repository uses phased Terraform so each deployment concern can be applied and debugged independently.
 
 Current phases:
 
-- `1_foundation/` - shared AWS/IAM/auth setup
-- `2_database/` - persistent data layer
-- `3_agents/` - queues, background workers, AI orchestration
-- `4_frontend/` - frontend delivery layer, modeled after the `alex` frontend deployment style
-- `5_enterprise/` - CloudWatch dashboards, alarms, and SNS notifications
+- `1_foundation/`: shared provider/project foundation.
+- `2_database/`: DynamoDB workspace table.
+- `3_agents/`: reserved async-agent phase for future SQS/worker expansion.
+- `4_frontend/`: S3 frontend bucket, CloudFront distribution, optional Lambda API, API Gateway, and scheduled agent trigger.
+- `5_enterprise/`: SNS alerts, CloudWatch dashboard, and CloudFront/API/Lambda monitoring.
 
-Notes:
+The normal deployment path is:
 
-- `4_frontend/` now contains real `S3 + CloudFront` infrastructure instead of only placeholders.
-- `5_enterprise/` now contains real monitoring primitives instead of only placeholders.
-- The current frontend app still needs a deployment-specific build strategy before it can be published cleanly as a static site through this layer.
+```bash
+bash scripts/deploy_aws.sh
+```
+
+That script packages the API, applies the needed Terraform layers, builds the frontend with the deployed API URL, uploads static assets, invalidates CloudFront, and applies monitoring.

@@ -6,4 +6,4 @@ This phase now provisions the active application database:
 - server-side encryption
 - point-in-time recovery support
 
-The backend now reads and writes workspace state from DynamoDB instead of SQLite.
+The backend reads and writes workspace state from DynamoDB in production, with local JSON fallback for development and tests.
