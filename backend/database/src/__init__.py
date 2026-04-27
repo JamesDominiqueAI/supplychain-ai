@@ -1,5 +1,6 @@
 from .demo_store import DemoStore
 from .dynamodb_store import DynamoDBStore
+from .agents import OperationsAgentTeam
 from .notifications import EmailAlertService
 from .replenishment_ai import OpenAIReplenishmentNarrator
 from .schemas import (
@@ -62,6 +63,7 @@ __all__ = [
     "MorningBriefResponse",
     "OrderNotificationEvent",
     "OpenAIReplenishmentNarrator",
+    "OperationsAgentTeam",
     "PurchaseOrder",
     "Product",
     "PurchaseRecommendation",

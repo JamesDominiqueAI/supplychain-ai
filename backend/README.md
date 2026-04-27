@@ -11,11 +11,11 @@ Implemented modules:
 Local API:
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python backend/api/main.py
+UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python backend/api/main.py
 ```
 
 Project evaluation:
 
 ```bash
-python scripts/evaluate_project.py
+UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/evaluate_project.py
 ```

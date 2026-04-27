@@ -47,7 +47,7 @@ Trade-off: request metrics are in-process and reset when the backend worker rest
 Run the deterministic evaluation script:
 
 ```bash
-python scripts/evaluate_project.py
+UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/evaluate_project.py
 ```
 
 The script creates an isolated local workspace in `/tmp`, disables external AI/email calls, and checks these scenarios:

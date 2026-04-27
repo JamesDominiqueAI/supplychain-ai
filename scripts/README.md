@@ -11,7 +11,7 @@ Implemented utilities:
 Run the project evaluation:
 
 ```bash
-python scripts/evaluate_project.py
+UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/evaluate_project.py
 ```
 
 Measure API latency:

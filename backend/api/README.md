@@ -14,7 +14,7 @@ Implemented responsibilities:
 Local development:
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python backend/api/main.py
+UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python backend/api/main.py
 ```
 
 Lambda packaging:

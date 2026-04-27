@@ -2,7 +2,7 @@
 
 ## 1. Project Summary
 
-SupplyChain AI is an AI-assisted inventory operations platform for small businesses that manage products, supplier relationships, stock movements, and purchase decisions without a full ERP system.
+SupplyChain AI is an AI-assisted inventory operations platform for small businesses that manage products, supplier relationships, stock movements, and purchase decisions without a full ERP system. It behaves like a lightweight stock room command center: records come in, risk is calculated, agents review the workspace, and the owner sees practical next steps.
 
 The product helps an owner answer practical daily questions:
 
@@ -26,7 +26,7 @@ The current repository is more than a concept. It includes a working frontend, b
 
 The app opens into an authenticated workspace rather than a marketing page. The core screens are:
 
-- Dashboard: operational status, low stock, forecasts, anomalies, morning brief, latest report, AI chat, and agent controls.
+- Dashboard: operational status, low stock, forecasts, anomalies, morning brief, latest report, AI chat, and an automatically running agent-team review.
 - Products: SKU catalog with demand, lead time, stock, reorder point, cost, and supplier preference.
 - Movements: sale, purchase, and adjustment recording.
 - Orders: purchase-order creation, AI-drafted orders, receiving flow, late-order visibility, and notification history.
@@ -103,6 +103,13 @@ Implemented agents:
 - Supplier Delay Agent: reviews late orders and delivery exposure.
 - Cash Replenishment Agent: evaluates cash pressure and drafts orders only when automation is enabled.
 
+Implementation boundary:
+
+- agent orchestration lives in `backend/database/src/agents.py`
+- workspace persistence and audit history stay in `dynamodb_store.py`
+- specialists return structured step records
+- state-changing actions still pass through guarded store methods
+
 Safety boundaries:
 
 - agents use internal workspace data only
@@ -147,7 +154,7 @@ The deterministic evaluation script checks the project as a product, not only as
 Run it with:
 
 ```bash
-python scripts/evaluate_project.py
+UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/evaluate_project.py
 ```
 
 ## 9. What Makes It Feel Real
@@ -179,4 +186,4 @@ python scripts/evaluate_project.py
 4. Add CSV import for products and movements.
 5. Expand E2E coverage for settings, report comparison, and supplier scorecards.
 6. Add a demo data reset command for presentations.
-7. Add production-grade CI/CD workflow documentation once the GitHub Actions files are present in the repository.
+7. Expand CI/CD documentation with screenshots of successful GitHub Actions runs and rollback examples.

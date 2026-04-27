@@ -1,16 +1,21 @@
 # SupplyChain AI
 
-SupplyChain AI is a production-style inventory intelligence platform for small businesses that manage stock, suppliers, and purchase decisions with limited tooling.
+SupplyChain AI is a cloud-ready inventory intelligence workspace for small businesses that need sharper purchasing decisions without buying a full ERP system.
 
-The app helps owners and operators:
+It turns everyday inventory records into an operations cockpit: stock movements become risk signals, supplier delays become visible, replenishment plans become cash-aware, and AI agents explain what needs attention before the business runs out of critical materials.
+
+The core idea is simple: deterministic business logic remains the source of truth, while guarded AI helps the owner understand risk, compare options, and draft safe next steps.
+
+The app helps teams:
 
 - track products, suppliers, inventory movements, and purchase orders
-- identify low-stock and stockout risk
+- identify low-stock, days-of-cover, and stockout risk
 - generate cash-aware replenishment reports
-- draft safe purchase orders
+- draft safe purchase orders without bypassing user control
 - compare supplier reliability and delivery exposure
 - ask workspace-specific AI questions with guardrails
-- audit AI decisions, fallback behavior, and token usage
+- run a separated agent team for daily operations review
+- audit AI decisions, fallback behavior, token usage, and agent runs
 
 ## What Is Built
 
@@ -18,11 +23,24 @@ The app helps owners and operators:
 - FastAPI backend with tenant-scoped APIs
 - DynamoDB workspace persistence with local JSON fallback
 - deterministic forecasting, inventory health, replenishment, supplier scorecards, anomalies, and cash logic
-- guarded AI chat, morning brief, report comparison, scenario analysis, and multi-agent operations runs
+- guarded AI chat, morning brief, report comparison, scenario analysis, and separated multi-agent operations runs
 - draft-first AI auto-orders and order notification events
 - observability endpoint and deterministic evaluation script
 - Terraform for DynamoDB, Lambda/API Gateway, S3/CloudFront, CloudWatch, and SNS
 - static frontend deployment path and Lambda packaging script
+
+## Why It Matters
+
+Many small stores know what they sold yesterday but not what they will run out of tomorrow. SupplyChain AI bridges that gap by combining operational records with forecasting, cash limits, supplier behavior, and explainable AI.
+
+Instead of saying only “buy more,” the system answers:
+
+- Which SKU is most urgent?
+- How many days of cover are left?
+- Which orders are late?
+- Can the business afford the full replenishment plan?
+- Which recommendations should become draft purchase orders?
+- Why did the AI accept, refuse, or fall back?
 
 ## Product Vision
 
@@ -45,10 +63,21 @@ SupplyChain AI answers those questions with deterministic operations logic first
 
 ## Core AI Agents
 
-- Operations Manager Agent: coordinates the specialist review.
-- Inventory Risk Agent: finds critical SKUs and days-of-cover issues.
-- Supplier Delay Agent: reviews late orders and supplier exposure.
+The agent team is separated in `backend/database/src/agents.py`:
+
+- Operations Manager Agent: coordinates the specialist review and summarizes the run.
+- Inventory Risk Agent: finds critical SKUs, low days of cover, and stockout exposure.
+- Supplier Delay Agent: reviews late orders and supplier delivery risk.
 - Cash Replenishment Agent: checks cash pressure and drafts orders only when automation is enabled.
+
+Agent guardrails:
+
+- internal workspace tools only
+- no external supplier calls
+- no negotiation claims
+- no payments or off-platform purchases
+- draft-first order behavior by default
+- every run persisted and summarized in the AI audit trail
 
 ## Stack
 
@@ -88,7 +117,7 @@ supplychain-ai/
 Run the backend:
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python backend/api/main.py
+UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python backend/api/main.py
 ```
 
 Run the frontend:
@@ -105,7 +134,7 @@ The frontend discovers local APIs on ports `8010`, `8011`, and `8012` unless `NE
 Run deterministic evaluation scenarios:
 
 ```bash
-python scripts/evaluate_project.py
+UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/evaluate_project.py
 ```
 
 The evaluation checks seed data, critical stock behavior, replenishment reporting, draft-first auto-orders, chat guardrails, AI audit persistence, multi-agent persistence, and tenant isolation.

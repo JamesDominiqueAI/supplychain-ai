@@ -5,7 +5,7 @@ The backend is a FastAPI service that exposes the workspace contract used by the
 ## Local Runtime
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python backend/api/main.py
+UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python backend/api/main.py
 ```
 
 The API defaults to `127.0.0.1:8010`. In development it prefers the local JSON workspace store unless `DYNAMODB_USE_REMOTE=true` is set.
