@@ -76,7 +76,7 @@ def main() -> int:
         "reports": len(store.list_reports()),
         "latest_job_status": report_job.status,
         "agent_run_status": agent_run.status,
-        "audit_events": len(store.list_ai_audit_logs(limit=50)),
+        "ai_events": len(store.list_ai_audit_logs(limit=50)),
         "refusal_demo": {
             "refused": refusal.refused,
             "used_ai": refusal.used_ai,
@@ -84,7 +84,7 @@ def main() -> int:
         },
         "next_steps": [
             "Run backend with the same LOCAL_STATE_PATH and owner id.",
-            "Open /audit after signing in to show the refusal and agent audit events.",
+            "Open the dashboard after signing in to review the seeded agent run and refusal-safe chat behavior.",
             "Use /reports to show the seeded replenishment report.",
         ],
     }

@@ -14,7 +14,7 @@ Every workspace contains exactly one business context plus operational records:
 - `jobs`
 - `reports`
 - `agent_runs`
-- `ai_audit_logs`
+- internal AI event records
 - `order_notification_events`
 - `critical_alert_state`
 
@@ -113,7 +113,7 @@ Receiving an order records received quantity and updates inventory through contr
 
 Each recommendation includes SKU, current stock, reorder point, forecast demand, days of cover, EOQ-style quantity, recommended quantity, estimated cost, urgency, recommendation type, confidence, and rationale.
 
-### AI Audit Log
+### AI Event Log
 
 AI and fallback behavior is recorded with:
 
@@ -126,7 +126,7 @@ AI and fallback behavior is recorded with:
 - token usage when available
 - created timestamp
 
-This gives the project a real trail for AI behavior without storing full prompts and responses.
+This gives the project traceability for AI behavior without storing full prompts and responses.
 
 ## Derived Views
 
@@ -136,7 +136,7 @@ Several important objects are derived rather than manually stored as separate tr
 - supplier scorecards: computed from supplier settings and purchase-order history
 - forecast insights: computed from baseline demand, recent sales, and trend direction
 - anomaly insights: computed from stock, sales, supplier delay, and cash pressure
-- observability metrics: request metrics in memory plus persisted AI audit summaries
+- observability metrics: request metrics in memory plus persisted AI event summaries
 
 ## Validation Rules
 

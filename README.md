@@ -15,7 +15,7 @@ The app helps teams:
 - compare supplier reliability and delivery exposure
 - ask workspace-specific AI questions with guardrails
 - run a separated agent team for daily operations review
-- audit AI decisions, fallback behavior, token usage, and agent runs
+- review operational metrics and guarded AI behavior through backend observability
 
 ## What Is Built
 
@@ -25,7 +25,6 @@ The app helps teams:
 - deterministic forecasting, inventory health, replenishment, supplier scorecards, anomalies, and cash logic
 - guarded AI chat, morning brief, report comparison, scenario analysis, and separated multi-agent operations runs
 - draft-first AI auto-orders and order notification events
-- dedicated AI audit page with accepted/fallback/refused decisions, reasons, previews, token usage, and observability metrics
 - observability endpoint and deterministic evaluation script
 - Terraform for DynamoDB, Lambda/API Gateway, S3/CloudFront, CloudWatch, and SNS
 - static frontend deployment path and Lambda packaging script
@@ -60,7 +59,7 @@ SupplyChain AI answers those questions with deterministic operations logic first
 - Owner: wants decisions, cash visibility, and plain-English summaries.
 - Store manager: records movements, receives orders, and watches stock risk.
 - Purchasing lead: reviews recommended orders and supplier reliability.
-- Operations analyst: uses reports, exports, audit logs, and observability signals.
+- Operations analyst: uses reports, exports, supplier scorecards, and observability signals.
 
 ## Core AI Agents
 
@@ -78,7 +77,7 @@ Agent guardrails:
 - no negotiation claims
 - no payments or off-platform purchases
 - draft-first order behavior by default
-- every run persisted and summarized in the AI audit trail
+- every run persisted and summarized in internal AI events
 
 ## Stack
 
@@ -138,7 +137,6 @@ The frontend discovers local APIs on ports `8010`, `8011`, and `8012` unless `NE
 - `/movements`: sale, purchase, and adjustment recording.
 - `/orders`: manual and AI-drafted purchase orders, status updates, and receiving.
 - `/reports`: replenishment reports, CSV export, cash scenarios, and report comparison.
-- `/audit`: AI decision trail with accepted, fallback, and refused events, reason categories, fallback-rate callouts, and a one-click refusal demo for interviews.
 - `/suppliers`: supplier catalog and scorecards.
 - `/settings`: cash, AI, automation, notification, and critical-alert controls.
 
@@ -171,24 +169,23 @@ Seed or reset a deterministic local demo workspace:
 UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/seed_demo.py --reset
 ```
 
-The script creates a report, runs the operations agent, and records an off-topic chat refusal so `/audit` has a concrete governance example to show in interviews.
+The script creates a report, runs the operations agent, and records an off-topic chat refusal so the backend observability endpoint has a concrete governance example.
 
 Suggested screenshots for a portfolio README or presentation:
 
 - `/dashboard`: inventory risk, forecasts, anomalies, and agent review.
 - `/reports`: replenishment report, cash scenario, and report comparison.
 - `/orders`: draft-first AI or manual purchase-order lifecycle.
-- `/audit`: refused chat event with reason and token/metric summary.
 - `/suppliers`: supplier scorecards and delay exposure.
 
 ## Architecture Tradeoffs
 
-- **Single-document workspace:** The current DynamoDB store keeps one workspace document per `owner_user_id`, which is ideal for capstone speed, tenant isolation, local JSON fallback, and deterministic demos. It should migrate before high-volume usage because DynamoDB items are limited to roughly 400 KB and movement/order/audit history will grow quickly.
-- **Multi-item migration path:** A production table should use keys such as `PK=WORKSPACE#{owner_user_id}` and `SK=PRODUCT#{product_id}`, `SK=MOVEMENT#{created_at}#{movement_id}`, `SK=ORDER#{created_at}#{order_id}`, `SK=REPORT#{generated_at}#{report_id}`, and `SK=AI_AUDIT#{created_at}#{audit_id}` with GSIs for entity type, product history, supplier exposure, and created date.
+- **Single-document workspace:** The current DynamoDB store keeps one workspace document per `owner_user_id`, which is ideal for capstone speed, tenant isolation, local JSON fallback, and deterministic demos. It should migrate before high-volume usage because DynamoDB items are limited to roughly 400 KB and movement/order/event history will grow quickly.
+- **Multi-item migration path:** A production table should use keys such as `PK=WORKSPACE#{owner_user_id}` and `SK=PRODUCT#{product_id}`, `SK=MOVEMENT#{created_at}#{movement_id}`, `SK=ORDER#{created_at}#{order_id}`, `SK=REPORT#{generated_at}#{report_id}`, and `SK=AI_EVENT#{created_at}#{event_id}` with GSIs for entity type, product history, supplier exposure, and created date.
 - **Inline jobs today, queued jobs next:** Replenishment and agent workflows run inline for the MVP. `backend/api/worker_handler.py` documents the SQS-style worker path so production can move to API job creation, SQS handoff, worker Lambda execution, and frontend polling.
 - **Guardrails today, adversarial testing next:** Topic and unsupported-action guardrails are implemented and tested. Prompt-injection and policy-bypass test suites are the next safety layer.
 - **RBAC scaffold:** Clerk JWT metadata can provide workspace roles such as `owner`, `manager`, `purchasing_lead`, and `analyst`. Sensitive settings and order automation routes are now role-gated in the API, with `X-Workspace-Role` available for local development demos.
-- **Snapshot chat today, retrieval next:** Workspace chat uses current structured state. A RAG upgrade should embed past reports, supplier history, late orders, and audit summaries so the model retrieves relevant long-term context instead of relying on a large workspace snapshot.
+- **Snapshot chat today, retrieval next:** Workspace chat uses current structured state. A RAG upgrade should embed past reports, supplier history, late orders, and AI event summaries so the model retrieves relevant long-term context instead of relying on a large workspace snapshot.
 
 ## Evaluation And Observability
 
@@ -198,7 +195,7 @@ Run deterministic evaluation scenarios:
 UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/evaluate_project.py
 ```
 
-The evaluation checks seed data, critical stock behavior, replenishment reporting, draft-first auto-orders, chat guardrails, AI audit persistence, multi-agent persistence, and tenant isolation.
+The evaluation checks seed data, critical stock behavior, replenishment reporting, draft-first auto-orders, chat guardrails, AI event persistence, multi-agent persistence, and tenant isolation.
 
 The API exposes signed-in workspace metrics at:
 
@@ -208,7 +205,7 @@ GET /api/observability/metrics
 
 See [guides/8_ai_observability_evaluation.md](guides/8_ai_observability_evaluation.md) for guardrails, metrics, and evaluation details.
 
-See [guides/10_capstone_hardening.md](guides/10_capstone_hardening.md) for the scaling and interview-readiness roadmap: AI audit demos, SQS workers, RBAC, RAG/vector retrieval, DynamoDB multi-item migration, and PR discipline.
+See [guides/10_capstone_hardening.md](guides/10_capstone_hardening.md) for the scaling and interview-readiness roadmap: observability demos, SQS workers, RBAC, RAG/vector retrieval, DynamoDB multi-item migration, and PR discipline.
 
 Example observability shape:
 

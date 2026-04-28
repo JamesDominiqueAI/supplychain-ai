@@ -36,7 +36,7 @@ As a small business owner, I want the system to tell me what to reorder this wee
 - workspace AI chat with guardrails
 - morning brief
 - multi-agent operations review
-- AI audit and observability metrics
+- AI event and observability metrics
 - settings for cash, AI, automation, notification email, and critical alerts
 
 ## Non-Goals
@@ -69,4 +69,4 @@ As a small business owner, I want the system to tell me what to reorder this wee
 6. Draft or place a purchase order.
 7. Receive the order and watch inventory recover.
 8. Ask the workspace AI a grounded operations question.
-9. Open the AI audit and observability metrics to show governance.
+9. Open observability metrics to show governance.

@@ -11,14 +11,14 @@ Operator
   -> DynamoDB workspace item
        |-> products, suppliers, movements, orders
        |-> replenishment reports and jobs
-       |-> agent runs and AI audit logs
+       |-> agent runs and AI event logs
        |-> order notification events
 
 FastAPI API
   |-> deterministic inventory, forecast, replenishment, supplier, and cash logic
   |-> optional LLM summaries, chat, scenarios, report comparisons, and agents
   |-> Resend/email notification adapter
-  |-> in-process request metrics plus persisted AI audit metrics
+  |-> in-process request metrics plus persisted AI event metrics
 
 AWS deployment
   -> API Gateway HTTP API
@@ -38,7 +38,7 @@ The frontend is a Next.js Pages Router app with Clerk authentication and a works
 - `/products`: product creation and catalog management.
 - `/movements`: sale, purchase, and adjustment recording.
 - `/orders`: manual and AI-drafted purchase orders, status updates, receiving flow, and notification visibility.
-- `/reports`: replenishment jobs, report history, CSV export, cash scenarios, report comparison, and AI audit.
+- `/reports`: replenishment jobs, report history, CSV export, cash scenarios, and report comparison.
 - `/suppliers`: supplier catalog and scorecards.
 - `/settings`: cash, AI, automation, notification, and critical-alert controls.
 
@@ -70,7 +70,7 @@ The workspace state contains:
 - purchase orders
 - replenishment jobs and reports
 - agent runs
-- AI audit logs
+- AI event logs
 - order notification events
 - critical alert state
 
@@ -113,7 +113,7 @@ The `scripts/deploy_aws.sh` script packages the backend, applies Terraform, buil
 ## Current Trade-Offs
 
 - Replenishment jobs run synchronously inside the API today; the Terraform agent phase leaves room for SQS/Lambda workers later.
-- Request metrics are in-process and reset when the API worker restarts; AI metrics persist because they are summarized from audit logs.
+- Request metrics are in-process and reset when the API worker restarts; AI metrics persist because they are summarized from internal AI events.
 - The DynamoDB single-item workspace model is excellent for demo speed and tenant isolation, but a high-volume production system would eventually split hot entities into a more granular schema.
 - External integrations are intentionally excluded: the product supports draft orders and email notifications, not real purchasing or supplier communication.
 

@@ -6,7 +6,7 @@ This project should use multiple narrow agents rather than one general model.
 
 ## Implemented Agent Team
 
-The backend now exposes a guarded multi-agent team. The implementation lives in `backend/database/src/agents.py`, while `dynamodb_store.py` stays responsible for persistence, audit logging, and workspace state.
+The backend now exposes a guarded multi-agent team. The implementation lives in `backend/database/src/agents.py`, while `dynamodb_store.py` stays responsible for persistence, event logging, and workspace state.
 
 - `operations_manager`: coordinates specialist agents and produces the overall run.
 - `inventory_risk_agent`: scans critical SKUs, days of cover, and stockout risk.
@@ -27,7 +27,7 @@ The Lambda handler also supports EventBridge scheduled events. Set `ENABLE_SCHED
 ## Separation Of Responsibilities
 
 - `OperationsAgentTeam`: orchestrates the run and selects the right specialist path.
-- `DynamoDBStore`: owns persistence, agent-run history, audit logs, and order creation.
+- `DynamoDBStore`: owns persistence, agent-run history, event logs, and order creation.
 - Specialist agents: return structured `AgentStepResult` records rather than directly mutating state.
 - Cash/order drafting: still flows through guarded store methods, so agent code cannot bypass draft-first automation rules.
 
@@ -111,4 +111,4 @@ Outputs:
 - External supplier calls, negotiations, payments, and off-platform purchases are blocked.
 - Draft order creation requires both `ai_enabled` and `ai_automation_enabled`.
 - Scheduled runs are disabled by default and require an explicit workspace owner id.
-- Every run is stored and summarized in the AI audit log.
+- Every run is stored and summarized in the internal AI event log.

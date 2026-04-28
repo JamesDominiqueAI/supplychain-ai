@@ -21,7 +21,7 @@ Seed a local demo workspace:
 UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/seed_demo.py --reset
 ```
 
-The script prints the local workspace state file, counts for products/suppliers/reports/orders, and a refusal demo that appears on the `/audit` page.
+The script prints the local workspace state file, counts for products/suppliers/reports/orders, and a refusal demo captured by backend observability.
 
 Measure API latency:
 

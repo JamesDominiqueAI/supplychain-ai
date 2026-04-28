@@ -1,6 +1,6 @@
 # Guide 7: Enterprise
 
-This project now includes the beginnings of enterprise posture: tenant isolation, auth, guarded AI, audit logs, notification records, deterministic evaluation, and deployable AWS monitoring.
+This project now includes the beginnings of enterprise posture: tenant isolation, auth, guarded AI, event logs, notification records, deterministic evaluation, and deployable AWS monitoring.
 
 ## Security
 
@@ -30,8 +30,8 @@ The store loads and saves workspace state by owner id. The deterministic evaluat
 - Unsupported external actions are refused.
 - Chat topics are restricted to operations, inventory, suppliers, orders, cash, reports, forecasts, sales, movements, anomalies, and delays.
 - AI output is structured and validated.
-- Fallbacks are deterministic and auditable.
-- AI audit logs record status, feature, confidence, reason, previews, and token usage.
+- Fallbacks are deterministic and traceable.
+- AI event logs record status, feature, confidence, reason, previews, and token usage.
 
 ## Observability
 
@@ -50,7 +50,7 @@ AWS monitoring:
 
 ## Evaluation
 
-`scripts/evaluate_project.py` runs a deterministic project evaluation with external AI/email disabled. It checks seed data, stock-risk behavior, replenishment reporting, draft-first auto-orders, chat guardrails, AI audit logging, multi-agent persistence, and tenant isolation.
+`scripts/evaluate_project.py` runs a deterministic project evaluation with external AI/email disabled. It checks seed data, stock-risk behavior, replenishment reporting, draft-first auto-orders, chat guardrails, AI event logging, multi-agent persistence, and tenant isolation.
 
 ## Remaining Enterprise Gaps
 

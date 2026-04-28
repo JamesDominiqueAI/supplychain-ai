@@ -3,7 +3,7 @@ import Head from "next/head";
 import { useEffect, useState } from "react";
 
 import { WorkspaceShell } from "../components/WorkspaceShell";
-import { AIAuditLog, authorizedFetch, Business, OrderNotificationEvent, TestNotificationResponse, useWorkspaceQuery } from "../lib/workspace-api";
+import { authorizedFetch, Business, OrderNotificationEvent, TestNotificationResponse, useWorkspaceQuery } from "../lib/workspace-api";
 
 export default function SettingsPage() {
   const { getToken } = useAuth();
@@ -14,10 +14,8 @@ export default function SettingsPage() {
   const [testNotice, setTestNotice] = useState<string | null>(null);
   const [notificationEmailDraft, setNotificationEmailDraft] = useState("");
   const businessQuery = useWorkspaceQuery<Business>(getToken, "/api/business");
-  const auditQuery = useWorkspaceQuery<AIAuditLog[]>(getToken, "/api/ai/audit?limit=5");
   const notificationsQuery = useWorkspaceQuery<OrderNotificationEvent[]>(getToken, "/api/notifications/orders");
   const business = businessQuery.data;
-  const auditLogs = (auditQuery.data || []).slice(0, 5);
   const notificationEvents = notificationsQuery.data || [];
 
   useEffect(() => {
@@ -33,7 +31,7 @@ export default function SettingsPage() {
         method: "PATCH",
         body: JSON.stringify(patch),
       });
-      await Promise.all([businessQuery.revalidate(), auditQuery.revalidate(), notificationsQuery.revalidate()]);
+      await Promise.all([businessQuery.revalidate(), notificationsQuery.revalidate()]);
     } finally {
       setSaving(false);
     }
@@ -52,7 +50,7 @@ export default function SettingsPage() {
       setTestNotice(response.sent
         ? `Test order email sent to ${response.recipient_email || "the configured recipient"}.`
         : `Test order email failed: ${response.detail}`);
-      await Promise.all([businessQuery.revalidate(), auditQuery.revalidate(), notificationsQuery.revalidate()]);
+      await Promise.all([businessQuery.revalidate(), notificationsQuery.revalidate()]);
     } finally {
       setTestingEmail(false);
     }
@@ -81,7 +79,7 @@ export default function SettingsPage() {
       <Head><title>Settings | SupplyChain AI</title></Head>
       <SignedOut><main className="page shell"><section className="panel"><h1>Sign in required.</h1></section></main></SignedOut>
       <SignedIn>
-        <WorkspaceShell title="Settings" description="Workspace identity, AI controls, and guardrail audit history live here.">
+        <WorkspaceShell title="Settings" description="Workspace identity, AI controls, and notification settings live here.">
           <section className="workspace-grid">
             <section className="panel stacked-panels">
               <div>
@@ -176,27 +174,6 @@ export default function SettingsPage() {
                   <article className="history-card"><p>Chat requests are limited to inventory, suppliers, orders, cash, reports, forecasts, delays, and related operations topics.</p></article>
                   <article className="history-card"><p>The assistant refuses unsupported claims like pretending to call suppliers or take arbitrary external actions. Real critical-stock emails only run through the configured backend alert rule.</p></article>
                   <article className="history-card"><p>Low-confidence or weak AI outputs fall back to rule-based answers instead of being shown as if they were reliable.</p></article>
-                </div>
-              </div>
-
-              <div>
-                <div className="panel-heading"><h2>AI Audit Log</h2><p>Recent AI calls and fallback/refusal decisions.</p></div>
-                <div className="history-list">
-                  {auditLogs.map((log) => (
-                    <article className="history-card" key={log.audit_id}>
-                      <div className="history-topline">
-                        <strong>{log.feature}</strong>
-                        <span className={`risk ${log.status === "accepted" ? "healthy" : log.status === "fallback" ? "watch" : "critical"}`}>{log.status}</span>
-                      </div>
-                      <p>{log.input_preview}</p>
-                      <div className="history-meta">
-                        <span>{new Date(log.created_at).toLocaleString()}</span>
-                        <span>{log.used_ai ? "AI used" : "Fallback"}</span>
-                        <span>{log.confidence || "n/a"} confidence</span>
-                      </div>
-                      {log.reason ? <div className="history-meta"><span>{log.reason}</span></div> : null}
-                    </article>
-                  ))}
                 </div>
               </div>
 

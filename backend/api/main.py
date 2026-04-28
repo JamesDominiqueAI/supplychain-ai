@@ -143,7 +143,7 @@ async def get_observability_metrics(store: DynamoDBStore = Depends(get_store)):
         "ai": summarize_ai_audit_logs(ai_logs),
         "notes": [
             "Request metrics are in-process and reset when the API worker restarts.",
-            "AI metrics are summarized from workspace audit logs and persist with the workspace store.",
+            "AI metrics are summarized from workspace AI events and persist with the workspace store.",
         ],
     }
 
@@ -230,14 +230,6 @@ async def get_forecast_insights(store: DynamoDBStore = Depends(get_store)):
 @app.get("/api/ai/anomalies")
 async def get_anomaly_insights(store: DynamoDBStore = Depends(get_store)):
     return store.list_anomaly_insights()
-
-
-@app.get("/api/ai/audit")
-async def list_ai_audit(
-    limit: int = Query(default=5, ge=1, le=50),
-    store: DynamoDBStore = Depends(get_store),
-):
-    return store.list_ai_audit_logs(limit=limit)
 
 
 @app.get("/api/ai/brief")

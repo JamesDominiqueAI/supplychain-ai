@@ -15,14 +15,14 @@ The product helps an owner answer practical daily questions:
 
 The current repository is more than a concept. It includes a working frontend, backend API, local and cloud storage strategy, AI guardrails, deterministic evaluation scenarios, browser workflow tests, AWS infrastructure, deployment scripts, and operational documentation.
 
-For live demos, run `scripts/seed_demo.py --reset` to create a predictable workspace with products, suppliers, movements, a replenishment report, an operations-agent run, and an off-topic refusal that appears in `/audit`.
+For live demos, run `scripts/seed_demo.py --reset` to create a predictable workspace with products, suppliers, movements, a replenishment report, an operations-agent run, and an off-topic refusal captured by backend observability.
 
 ## 2. Target Users
 
 - Owner: wants clear decisions, cash awareness, and plain-language summaries.
 - Store manager: records sales, purchases, adjustments, and receives orders.
 - Purchasing lead: reviews supplier risk and creates purchase orders.
-- Operator/analyst: checks reports, audits AI behavior, and compares replenishment plans.
+- Operator/analyst: checks reports, compares replenishment plans, and reviews observability signals.
 
 ## 3. Product Experience
 
@@ -32,7 +32,7 @@ The app opens into an authenticated workspace rather than a marketing page. The 
 - Products: SKU catalog with demand, lead time, stock, reorder point, cost, and supplier preference.
 - Movements: sale, purchase, and adjustment recording.
 - Orders: purchase-order creation, AI-drafted orders, receiving flow, late-order visibility, and notification history.
-- Reports: replenishment generation, CSV export, cash scenarios, report comparison, and AI audit.
+- Reports: replenishment generation, CSV export, cash scenarios, and report comparison.
 - Suppliers: supplier records and scorecards.
 - Settings: available cash, AI enablement, automation, notification email, and critical-stock alerts.
 
@@ -73,9 +73,9 @@ Cloud:
 Architecture tradeoffs:
 
 - The single-document workspace model is simple and demo-friendly, but it should migrate before production-scale event history because DynamoDB items are limited to roughly 400 KB.
-- The production migration path is a multi-item DynamoDB model using `PK=WORKSPACE#{owner_user_id}` and typed `SK` values for products, movements, orders, reports, and AI audit events.
+- The production migration path is a multi-item DynamoDB model using `PK=WORKSPACE#{owner_user_id}` and typed `SK` values for products, movements, orders, reports, and AI events.
 - Replenishment and agent runs execute inline today, while `backend/api/worker_handler.py` demonstrates the SQS worker handoff pattern for production hardening.
-- Chat uses the current structured workspace snapshot today; a RAG layer over historical reports, supplier events, and audit summaries is the natural next step.
+- Chat uses the current structured workspace snapshot today; a RAG layer over historical reports, supplier events, and AI event summaries is the natural next step.
 
 ## 5. AI Design
 
@@ -102,13 +102,13 @@ AI improves:
 - report comparisons
 - multi-agent operations reviews
 
-The backend records accepted, fallback, and refused AI paths in an audit log. The frontend exposes this in `/audit`, where an interviewer can inspect status, feature, reason/refusal text, input and output previews, confidence, token usage, refusal rate, fallback rate, and feature counts.
+The backend records accepted, fallback, and refused AI paths as internal events used by the observability endpoint. An interviewer can inspect aggregate success, fallback, refusal, token, and feature metrics through `/api/observability/metrics`.
 
 Concrete demo example:
 
 1. Ask the workspace chat an off-topic prompt such as “Write a poem about the weather.”
 2. The backend refuses it because the assistant only handles operations topics.
-3. `/audit` shows the event as `refused`, records that AI was not used, displays the input preview, and shows the refusal reason.
+3. `/api/observability/metrics` updates the refusal rate and feature counts from persisted backend AI events.
 
 Safety hardening note: current guardrails cover topic boundaries and unsupported external actions. A next hardening layer should add explicit prompt-injection and policy-bypass tests, for example prompts that ask the assistant to ignore inventory rules, reveal hidden system instructions, or claim supplier contact anyway.
 
@@ -126,7 +126,7 @@ Implemented agents:
 Implementation boundary:
 
 - agent orchestration lives in `backend/database/src/agents.py`
-- workspace persistence and audit history stay in `dynamodb_store.py`
+- workspace persistence and AI event history stay in `dynamodb_store.py`
 - specialists return structured step records
 - state-changing actions still pass through guarded store methods
 
@@ -152,7 +152,7 @@ The project uses a workspace document model keyed by `owner_user_id`. Each works
 - replenishment jobs
 - reports
 - agent runs
-- AI audit logs
+- AI event logs
 - order notification events
 - critical alert state
 
@@ -181,19 +181,19 @@ Example metrics to show during a review:
 
 - AI success/fallback/refusal rates from `/api/observability/metrics`.
 - p95 API latency from the in-process request metrics.
-- token totals from AI audit events.
+- token totals from AI events.
 - feature counts showing which AI surfaces are active.
 
 ## 9. What Makes It Feel Real
 
 - Authenticated workspace instead of a static demo.
 - User-facing workflows for catalog, movements, orders, reports, suppliers, and settings.
-- Dedicated `/audit` page for accepted, fallback, and refused AI decisions.
+- Backend observability for accepted, fallback, and refused AI decisions.
 - Actual purchase-order lifecycle, including receiving and late-order state.
 - Cash-aware replenishment instead of generic recommendations.
 - Supplier scorecards connected to order history.
 - Guarded AI with refusal and fallback behavior.
-- Audit logs and observability endpoint.
+- AI event metrics and observability endpoint.
 - AWS infrastructure and deploy scripts.
 - Docker Compose local runtime.
 - Deterministic evaluation and E2E workflow tests.
@@ -216,7 +216,7 @@ Example metrics to show during a review:
 4. Add a retrieval layer for workspace chat using embeddings over past reports, supplier history, and order events.
 5. Migrate large workspaces from the single-document model to a DynamoDB multi-item model with keys such as `PK=WORKSPACE#{owner_user_id}` and `SK=ENTITY#{type}#{id}` plus GSIs for entity type, created date, and supplier/product lookups.
 6. Add CSV import for products and movements.
-7. Expand E2E coverage for settings, report comparison, supplier scorecards, and the audit page.
+7. Expand E2E coverage for settings, report comparison, supplier scorecards, and observability-sensitive workflows.
 8. Add a demo data reset command for presentations.
 9. Use self-authored pull requests with descriptions to show code review discipline.
 

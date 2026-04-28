@@ -2,29 +2,29 @@
 
 This guide turns the main reviewer concerns into an explicit engineering roadmap. It is intentionally practical: each section names the current state, why it matters, and the next implementation step.
 
-## 1. AI Audit Visibility
+## 1. AI Observability Visibility
 
 Current state:
 
-- The backend persists AI audit events for chat, reports, briefs, scenarios, comparisons, and agents.
-- The `/audit` page exposes accepted, fallback, and refused events with status, feature, reason/refusal text, input and output previews, confidence, token usage, refusal rate, fallback rate, and feature counts.
+- The backend persists AI events for chat, reports, briefs, scenarios, comparisons, and agents.
+- The API exposes accepted, fallback, and refused event summaries through `/api/observability/metrics`.
 
 Interview demo:
 
 1. Ask the workspace chat an off-topic prompt such as `Write a poem about the weather`.
 2. The backend refuses it because the assistant is limited to inventory, suppliers, orders, cash, reports, forecasts, and related operations.
-3. Open `/audit` and show the refused event, input preview, fallback/AI-used flag, confidence, and refusal reason.
+3. Open `/api/observability/metrics` with a signed-in session token and show the refusal rate, AI status counts, and feature counts.
 
 Next hardening step:
 
-- Add a screenshot to the README or presentation after running the demo workspace.
+- Add an observability screenshot or small metrics excerpt to the README or presentation after running the demo workspace.
 
 ## 2. Async Worker Path
 
 Current state:
 
 - Replenishment jobs and agent runs execute inline in the API.
-- The API still persists job records, report records, agent runs, and audit logs, so the user experience behaves like a job-based workflow.
+- The API still persists job records, report records, agent runs, and event logs, so the user experience behaves like a job-based workflow.
 - Terraform has a reserved `3_agents` phase for queues and worker infrastructure.
 - `backend/api/worker_handler.py` provides an SQS-style worker stub that processes `replenishment` and `operations_agent` messages with the same domain methods used by the API.
 
@@ -44,7 +44,7 @@ Worker Lambda
   -> receive SQS message
   -> load workspace
   -> run replenishment or agent workflow
-  -> persist report/agent run/audit logs
+  -> persist report/agent run/event logs
   -> mark job completed or failed
 
 Frontend
@@ -82,7 +82,7 @@ Recommended role matrix:
 | Record movements | Yes | Yes | No | No |
 | Create purchase orders | Yes | No | Yes | No |
 | Approve AI-drafted orders | Yes | No | Yes | No |
-| View reports and audit logs | Yes | Yes | Yes | Yes |
+| View reports and observability metrics | Yes | Yes | Yes | Yes |
 
 Minimal implementation:
 
@@ -109,7 +109,7 @@ Target retrieval sources:
 - supplier scorecards and notes
 - late-order events
 - order notification events
-- AI audit summaries
+- AI event summaries
 - owner-facing monthly/weekly briefs
 
 Minimal implementation:
@@ -129,7 +129,7 @@ Current state:
 Where it breaks:
 
 - DynamoDB item size limit is 400 KB.
-- Movement history, order history, reports, audit logs, and notification events will eventually exceed that limit.
+- Movement history, order history, reports, event logs, and notification events will eventually exceed that limit.
 - Write contention can also increase because every update rewrites the workspace item.
 
 Migration design:
@@ -151,7 +151,7 @@ PK = WORKSPACE#{owner_user_id}
 SK = REPORT#{generated_at}#{report_id}
 
 PK = WORKSPACE#{owner_user_id}
-SK = AI_AUDIT#{created_at}#{audit_id}
+SK = AI_EVENT#{created_at}#{event_id}
 ```
 
 Useful indexes:
@@ -180,7 +180,7 @@ Why this matters:
 Recommended workflow:
 
 1. Open a GitHub issue for each meaningful feature or hardening task.
-2. Create a branch named `feature/audit-page` or `hardening/sqs-worker-path`.
+2. Create a branch named `feature/observability-metrics` or `hardening/sqs-worker-path`.
 3. Open a self-authored PR with context, screenshots, tests, and risks.
 4. Let CI run.
 5. Squash or merge after review.

@@ -255,21 +255,6 @@ export interface ReportComparisonResponse {
   confidence: "low" | "medium" | "high";
 }
 
-export interface AIAuditLog {
-  audit_id: string;
-  feature: "chat" | "report" | "brief" | "scenario" | "comparison" | "agent";
-  used_ai: boolean;
-  status: "accepted" | "fallback" | "refused";
-  input_preview: string;
-  output_preview?: string | null;
-  confidence?: "low" | "medium" | "high" | null;
-  reason?: string | null;
-  input_tokens?: number | null;
-  output_tokens?: number | null;
-  total_tokens?: number | null;
-  created_at: string;
-}
-
 export interface AgentStepResult {
   step_id: string;
   agent_name: "operations_manager" | "inventory_risk_agent" | "supplier_delay_agent" | "cash_replenishment_agent";
@@ -507,7 +492,7 @@ function invalidationPathsForMutation(path: string): string[] {
     return ["/api/suppliers", "/api/suppliers/scorecards", "/api/products", "/api/orders", "/api/dashboard/summary"];
   }
   if (path === "/api/business/settings") {
-    return ["/api/business", "/api/ai/audit", "/api/notifications/orders", "/api/ai/brief", "/api/dashboard/summary"];
+    return ["/api/business", "/api/notifications/orders", "/api/ai/brief", "/api/dashboard/summary"];
   }
   if (path === "/api/notifications/test-order-email") {
     return ["/api/notifications/orders"];
@@ -522,17 +507,17 @@ function invalidationPathsForMutation(path: string): string[] {
     return ["/api/orders", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/suppliers/scorecards", "/api/dashboard/summary"];
   }
   if (path === "/api/ai/agents/operations") {
-    return ["/api/ai/agents/runs", "/api/orders", "/api/ai/audit", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/dashboard/summary"];
+    return ["/api/ai/agents/runs", "/api/orders", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/dashboard/summary"];
   }
   if (
     path === "/api/ai/agents/inventory-risk" ||
     path === "/api/ai/agents/supplier-delay" ||
     path === "/api/ai/agents/cash-replenishment"
   ) {
-    return ["/api/ai/agents/runs", "/api/orders", "/api/ai/audit", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/dashboard/summary"];
+    return ["/api/ai/agents/runs", "/api/orders", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/dashboard/summary"];
   }
   if (path === "/api/ai/scenario" || path === "/api/ai/chat") {
-    return ["/api/ai/audit", "/api/observability/metrics"];
+    return ["/api/observability/metrics"];
   }
   return [path];
 }

@@ -137,13 +137,13 @@ def main() -> int:
         )
     )
 
-    audit_logs = store.list_ai_audit_logs(limit=200)
+    ai_events = store.list_ai_audit_logs(limit=200)
     results.append(
         scenario(
-            "ai-audit-log",
-            "AI/fallback/refusal decisions are stored in the audit log.",
-            f"{len(audit_logs)} audit event(s), latest_status={audit_logs[0].status if audit_logs else 'none'}.",
-            len(audit_logs) > 0,
+            "ai-event-log",
+            "AI/fallback/refusal decisions are stored as internal observability events.",
+            f"{len(ai_events)} AI event(s), latest_status={ai_events[0].status if ai_events else 'none'}.",
+            len(ai_events) > 0,
         )
     )
 

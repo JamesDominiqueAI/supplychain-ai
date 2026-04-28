@@ -57,7 +57,6 @@ The API defaults to `127.0.0.1:8010`. In development it prefers the local JSON w
 
 - `GET /api/ai/forecast`
 - `GET /api/ai/anomalies`
-- `GET /api/ai/audit`
 - `GET /api/ai/brief`
 - `POST /api/ai/chat`
 - `POST /api/ai/scenario`
@@ -81,12 +80,12 @@ The API defaults to `127.0.0.1:8010`. In development it prefers the local JSON w
 - Maintain deterministic inventory, replenishment, supplier scorecard, and forecast logic.
 - Reject off-topic or unsafe chat prompts.
 - Convert AI failures into deterministic fallback responses.
-- Record AI audit events and request metrics.
+- Record internal AI events and request metrics.
 - Package cleanly for Lambda with `Mangum`.
 
 ## Current Workflow Model
 
-Replenishment and agent workflows currently run inline and complete quickly enough for the MVP. They still create persisted job, report, audit, and agent-run records so the product behaves like an operational system. The `terraform/3_agents` phase remains the expansion point for SQS-backed workers when the project needs true async execution.
+Replenishment and agent workflows currently run inline and complete quickly enough for the MVP. They still create persisted job, report, event, and agent-run records so the product behaves like an operational system. The `terraform/3_agents` phase remains the expansion point for SQS-backed workers when the project needs true async execution.
 
 ## Guardrails
 
@@ -95,4 +94,4 @@ Replenishment and agent workflows currently run inline and complete quickly enou
 - AI cannot claim external supplier calls, negotiations, payments, or account access.
 - AI order automation is constrained by `ai_enabled`, `ai_automation_enabled`, cash, and `AI_AUTO_ORDER_MAX_SPEND`.
 - Structured AI output is validated; rejected output falls back to deterministic text.
-- Every AI decision path writes an audit record.
+- Every AI decision path writes an internal event used by observability metrics.

@@ -21,7 +21,7 @@ Every LLM feature asks for JSON with a strict shape:
 - `scenario`: `summary`, `recommended_skus`, `deferred_skus`, `confidence`.
 - `comparison`: `summary`, `changes`, `confidence`.
 
-The backend records each event in the AI audit log with feature name, AI usage, accepted/fallback/refused status, confidence, reason, preview fields, and token usage when the provider returns usage data. Structured LLM responses are parsed from both the primary `output_text` field and nested response content, and parse fallbacks preserve the raw preview and token metadata so debugging is visible instead of disappearing into a generic error.
+The backend records each AI event with feature name, AI usage, accepted/fallback/refused status, confidence, reason, preview fields, and token usage when the provider returns usage data. Structured LLM responses are parsed from both the primary `output_text` field and nested response content, and parse fallbacks preserve the raw preview and token metadata so debugging is visible instead of disappearing into a generic error.
 
 ## Guardrails
 
@@ -31,7 +31,7 @@ The backend records each event in the AI audit log with feature name, AI usage, 
 - Fallback behavior: if AI is disabled, unavailable, low confidence, or rejected by guardrails, the backend returns deterministic rule-based answers.
 - Automation boundary: AI auto-ordering is draft-first by default and constrained by available cash plus `AI_AUTO_ORDER_MAX_SPEND`.
 - Agent boundary: agents are restricted to internal tools. Scheduled agents are disabled by default and require explicit owner/workspace configuration.
-- Auditability: prompts and responses are not fully stored, but short previews, reasons, confidence, status, and token counts are logged for traceability.
+- Traceability: prompts and responses are not fully stored, but short previews, reasons, confidence, status, and token counts are logged.
 
 Prompt-injection hardening is the next guardrail layer. The current tests cover topic and unsupported-action refusal; future tests should include attempts to override system instructions, request hidden prompts, bypass the operations-only topic boundary, or force the assistant to claim an external supplier/payment action.
 
@@ -42,9 +42,9 @@ The API exposes `GET /api/observability/metrics` for signed-in workspaces. It re
 - Request metrics: total requests, average latency, p95 latency, status buckets, server error rate, requests by route, and server errors by route.
 - AI metrics: accepted/fallback/refused counts, success rate, fallback rate, refusal rate, feature counts, and total input/output/combined tokens.
 
-Trade-off: request metrics are in-process and reset when the backend worker restarts. AI metrics are summarized from persistent workspace audit logs, so they survive restarts.
+Trade-off: request metrics are in-process and reset when the backend worker restarts. AI metrics are summarized from persistent workspace AI events, so they survive restarts.
 
-The frontend exposes the same governance story in `/audit`. That page lists recent AI audit events with status, feature, categorized reason/refusal text, input and output previews, confidence, token usage, and aggregate success/fallback/refusal rates. It also includes a "Create Refusal Demo" action that sends a prompt-injection style chat request through the normal API path, refreshes the audit metrics, and gives interviewers a concrete refused event to inspect.
+The frontend does not expose a standalone AI event screen. The backend still keeps AI events for traceability, and `/api/observability/metrics` summarizes accepted, fallback, and refused paths for evaluation and production monitoring.
 
 ## Evaluation
 
@@ -61,7 +61,7 @@ The script creates an isolated local workspace in `/tmp`, disables external AI/e
 - Replenishment creates a completed job and recommendations.
 - AI automation creates draft orders by default.
 - Off-topic chat is refused.
-- AI audit events are persisted.
+- AI events are persisted.
 - Multi-agent runs delegate to specialist agents and persist run history.
 - Tenant isolation checks verify another owner cannot see the evaluation SKU or agent run.
 

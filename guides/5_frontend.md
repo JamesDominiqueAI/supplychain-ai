@@ -22,11 +22,7 @@ Operators can place manual orders, review AI-drafted orders, update order status
 
 ### `/reports`
 
-Operators can run replenishment analysis, review recommendation history, export CSV reports, compare reports, test cash scenarios, and inspect AI audit events.
-
-### `/audit`
-
-Operators can inspect accepted, fallback, and refused AI decisions with reasons, previews, confidence, token usage, feature counts, and refusal/fallback rates. This is the clearest screen for demonstrating AI governance in interviews.
+Operators can run replenishment analysis, review recommendation history, export CSV reports, compare reports, and test cash scenarios.
 
 ### `/suppliers`
 
@@ -50,7 +46,7 @@ Local API discovery checks:
 
 - Put operational work first: dashboard, products, orders, movements, reports, suppliers, and settings.
 - Show plain explanations next to recommendations.
-- Keep AI visible but accountable through confidence, fallback, audit, and report fields.
+- Keep AI visible but accountable through confidence, fallback, guardrails, and report fields.
 - Make risky actions draft-first.
 - Favor compact management screens over marketing-style composition.
 - Keep the app usable in low-data environments where history may be incomplete.
