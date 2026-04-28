@@ -187,6 +187,7 @@ Suggested screenshots for a portfolio README or presentation:
 - **Multi-item migration path:** A production table should use keys such as `PK=WORKSPACE#{owner_user_id}` and `SK=PRODUCT#{product_id}`, `SK=MOVEMENT#{created_at}#{movement_id}`, `SK=ORDER#{created_at}#{order_id}`, `SK=REPORT#{generated_at}#{report_id}`, and `SK=AI_AUDIT#{created_at}#{audit_id}` with GSIs for entity type, product history, supplier exposure, and created date.
 - **Inline jobs today, queued jobs next:** Replenishment and agent workflows run inline for the MVP. `backend/api/worker_handler.py` documents the SQS-style worker path so production can move to API job creation, SQS handoff, worker Lambda execution, and frontend polling.
 - **Guardrails today, adversarial testing next:** Topic and unsupported-action guardrails are implemented and tested. Prompt-injection and policy-bypass test suites are the next safety layer.
+- **RBAC scaffold:** Clerk JWT metadata can provide workspace roles such as `owner`, `manager`, `purchasing_lead`, and `analyst`. Sensitive settings and order automation routes are now role-gated in the API, with `X-Workspace-Role` available for local development demos.
 - **Snapshot chat today, retrieval next:** Workspace chat uses current structured state. A RAG upgrade should embed past reports, supplier history, late orders, and audit summaries so the model retrieves relevant long-term context instead of relying on a large workspace snapshot.
 
 ## Evaluation And Observability

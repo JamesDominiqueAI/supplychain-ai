@@ -49,7 +49,13 @@ from schemas import (
     UpdateBusinessSettingsRequest,
     UpdatePurchaseOrderStatusRequest,
 )
-from auth import actor_id_from_request, auth_debug_info
+from auth import (
+    ROLE_OWNER,
+    ROLE_PURCHASING_LEAD,
+    actor_id_from_request,
+    auth_debug_info,
+    require_workspace_role,
+)
 from observability import log_request_event, request_metrics, summarize_ai_audit_logs
 
 if load_dotenv and not os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
@@ -165,6 +171,7 @@ async def get_dashboard_summary(store: "DynamoDBStore" = Depends(get_store)):
 async def update_business_settings(
     payload: UpdateBusinessSettingsRequest,
     store: DynamoDBStore = Depends(get_store),
+    _: str = Depends(require_workspace_role(ROLE_OWNER)),
 ):
     return store.update_business_settings(payload)
 
@@ -276,6 +283,7 @@ async def send_test_order_email(
 async def create_auto_orders(
     store: DynamoDBStore = Depends(get_store),
     actor_email: str | None = Header(default=None, alias="X-Actor-Email"),
+    _: str = Depends(require_workspace_role(ROLE_OWNER, ROLE_PURCHASING_LEAD)),
 ):
     return store.auto_place_orders(recipient_email=actor_email)
 
@@ -352,6 +360,7 @@ async def run_cash_replenishment_agent(
     payload: AgentRunRequest,
     store: DynamoDBStore = Depends(get_store),
     actor_email: str | None = Header(default=None, alias="X-Actor-Email"),
+    _: str = Depends(require_workspace_role(ROLE_OWNER, ROLE_PURCHASING_LEAD)),
 ) -> AgentRunResponse:
     return store.run_operations_agent(
         payload.model_copy(update={"agent_name": "cash_replenishment_agent"}),
@@ -459,6 +468,7 @@ async def create_order(
     payload: CreatePurchaseOrderRequest,
     store: DynamoDBStore = Depends(get_store),
     actor_email: str | None = Header(default=None, alias="X-Actor-Email"),
+    _: str = Depends(require_workspace_role(ROLE_OWNER, ROLE_PURCHASING_LEAD)),
 ):
     try:
         return store.create_purchase_order(
@@ -477,6 +487,7 @@ async def update_order_status(
     payload: UpdatePurchaseOrderStatusRequest,
     store: DynamoDBStore = Depends(get_store),
     actor_email: str | None = Header(default=None, alias="X-Actor-Email"),
+    _: str = Depends(require_workspace_role(ROLE_OWNER, ROLE_PURCHASING_LEAD)),
 ):
     try:
         return store.update_purchase_order_status(order_id, payload, recipient_email=actor_email)

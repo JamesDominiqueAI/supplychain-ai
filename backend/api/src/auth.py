@@ -9,6 +9,19 @@ import jwt
 from fastapi import Header, HTTPException, status
 
 
+WorkspaceRole = str
+ROLE_OWNER = "owner"
+ROLE_MANAGER = "manager"
+ROLE_PURCHASING_LEAD = "purchasing_lead"
+ROLE_ANALYST = "analyst"
+VALID_WORKSPACE_ROLES = {
+    ROLE_OWNER,
+    ROLE_MANAGER,
+    ROLE_PURCHASING_LEAD,
+    ROLE_ANALYST,
+}
+
+
 def _token_from_header(authorization: str | None) -> str | None:
     if not authorization or not authorization.startswith("Bearer "):
         return None
@@ -88,7 +101,7 @@ def _verify_session_payload(token: str) -> dict[str, Any]:
     )
 
 
-def resolve_actor_id(authorization: str | None) -> str:
+def _decode_session_payload(authorization: str | None) -> dict[str, Any]:
     token = _token_from_header(authorization)
 
     if not token:
@@ -113,7 +126,7 @@ def resolve_actor_id(authorization: str | None) -> str:
         subject = payload.get("sub")
         if not subject:
             raise HTTPException(status_code=401, detail="Missing user identity in session token")
-        return str(subject)
+        return payload
 
     try:
         payload = _verify_session_payload(token)
@@ -125,11 +138,80 @@ def resolve_actor_id(authorization: str | None) -> str:
     subject = payload.get("sub")
     if not subject:
         raise HTTPException(status_code=401, detail="Missing user identity in session token")
-    return str(subject)
+    return payload
+
+
+def resolve_actor_id(authorization: str | None) -> str:
+    return str(_decode_session_payload(authorization).get("sub"))
+
+
+def _role_from_metadata(payload: dict[str, Any]) -> WorkspaceRole | None:
+    metadata_candidates = [
+        payload.get("workspace_role"),
+        payload.get("role"),
+        payload.get("org_role"),
+    ]
+    for metadata_key in ("public_metadata", "private_metadata", "metadata"):
+        metadata = payload.get(metadata_key)
+        if isinstance(metadata, dict):
+            metadata_candidates.extend(
+                [
+                    metadata.get("workspace_role"),
+                    metadata.get("role"),
+                    metadata.get("supplychain_role"),
+                ]
+            )
+
+    for candidate in metadata_candidates:
+        if not isinstance(candidate, str):
+            continue
+        normalized = candidate.strip().lower().replace("-", "_")
+        if normalized in VALID_WORKSPACE_ROLES:
+            return normalized
+    return None
+
+
+def resolve_workspace_role(
+    authorization: str | None,
+    development_role: str | None = None,
+) -> WorkspaceRole:
+    payload = _decode_session_payload(authorization)
+    metadata_role = _role_from_metadata(payload)
+    if metadata_role:
+        return metadata_role
+
+    if _use_local_dev_token_fallback():
+        header_role = (development_role or "").strip().lower().replace("-", "_")
+        if header_role in VALID_WORKSPACE_ROLES:
+            return header_role
+        return ROLE_OWNER
+
+    fallback_role = os.getenv("WORKSPACE_DEFAULT_ROLE", ROLE_ANALYST).strip().lower().replace("-", "_")
+    if fallback_role in VALID_WORKSPACE_ROLES:
+        return fallback_role
+    return ROLE_ANALYST
 
 
 def actor_id_from_request(authorization: str | None = Header(default=None)) -> str:
     return resolve_actor_id(authorization)
+
+
+def require_workspace_role(*allowed_roles: WorkspaceRole):
+    allowed = set(allowed_roles)
+
+    def dependency(
+        authorization: str | None = Header(default=None),
+        development_role: str | None = Header(default=None, alias="X-Workspace-Role"),
+    ) -> WorkspaceRole:
+        role = resolve_workspace_role(authorization, development_role=development_role)
+        if role not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requires one of these workspace roles: {', '.join(sorted(allowed))}",
+            )
+        return role
+
+    return dependency
 
 
 def auth_debug_info(authorization: str | None) -> dict[str, Any]:

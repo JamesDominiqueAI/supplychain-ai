@@ -64,7 +64,9 @@ Minimal implementation:
 Current state:
 
 - Clerk authenticates users and the backend scopes data by actor id.
-- The app has clear personas, but authorization is workspace-level rather than role-level.
+- The app has clear personas and now includes a lightweight backend RBAC layer.
+- Roles can come from Clerk JWT metadata fields such as `public_metadata.workspace_role`, or from `X-Workspace-Role` in local development.
+- Owner-only settings and owner/purchasing-lead order automation paths are gated in the API.
 
 Why this matters:
 
@@ -85,8 +87,8 @@ Recommended role matrix:
 Minimal implementation:
 
 - Store role metadata in Clerk public/private metadata or a workspace membership entity.
-- Add a backend dependency such as `require_role("owner", "purchasing_lead")`.
-- Gate settings, AI automation, order approval, and report export routes.
+- Use the existing backend dependency pattern, `require_workspace_role("owner", "purchasing_lead")`.
+- Continue expanding gates to report export, supplier administration, and future multi-user workspace invitations.
 - Mirror role affordances in the UI by disabling or hiding restricted actions.
 
 ## 4. RAG And Vector Retrieval

@@ -33,6 +33,37 @@ class AuthTests(unittest.TestCase):
 
         self.assertEqual(actor_id, "user-123")
 
+    def test_workspace_role_uses_clerk_metadata(self) -> None:
+        token = jwt.encode(
+            {"sub": "user-123", "public_metadata": {"workspace_role": "purchasing_lead"}},
+            "ignored",
+            algorithm="HS256",
+        )
+
+        role = self.auth.resolve_workspace_role(f"Bearer {token}")
+
+        self.assertEqual(role, self.auth.ROLE_PURCHASING_LEAD)
+
+    def test_workspace_role_accepts_development_header(self) -> None:
+        token = jwt.encode({"sub": "user-123"}, "ignored", algorithm="HS256")
+
+        role = self.auth.resolve_workspace_role(f"Bearer {token}", development_role="manager")
+
+        self.assertEqual(role, self.auth.ROLE_MANAGER)
+
+    def test_required_workspace_role_rejects_unauthorized_role(self) -> None:
+        token = jwt.encode(
+            {"sub": "user-123", "public_metadata": {"workspace_role": "analyst"}},
+            "ignored",
+            algorithm="HS256",
+        )
+        dependency = self.auth.require_workspace_role(self.auth.ROLE_OWNER)
+
+        with self.assertRaises(HTTPException) as context:
+            dependency(authorization=f"Bearer {token}")
+
+        self.assertEqual(context.exception.status_code, 403)
+
     def test_missing_jwks_configuration_fails_closed(self) -> None:
         os.environ["CLERK_SECRET_KEY"] = ""
         os.environ["CLERK_ISSUER"] = ""

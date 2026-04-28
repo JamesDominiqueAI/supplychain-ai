@@ -57,6 +57,7 @@ Backend:
 - optional LLM summaries and chat with guardrails
 - Resend-compatible notification service
 - Lambda support through Mangum
+- lightweight RBAC dependency for owner, manager, purchasing lead, and analyst roles from Clerk metadata
 
 Cloud:
 
@@ -110,6 +111,8 @@ Concrete demo example:
 3. `/audit` shows the event as `refused`, records that AI was not used, displays the input preview, and shows the refusal reason.
 
 Safety hardening note: current guardrails cover topic boundaries and unsupported external actions. A next hardening layer should add explicit prompt-injection and policy-bypass tests, for example prompts that ask the assistant to ignore inventory rules, reveal hidden system instructions, or claim supplier contact anyway.
+
+The backend now includes prompt-injection phrase checks for chat input/output and role gates for sensitive settings and purchasing automation routes. Full organization membership management remains a future step.
 
 ## 6. Agent Team
 
@@ -200,7 +203,7 @@ Example metrics to show during a review:
 
 - Async queue workers are planned but not active; workflows currently run inline through the API.
 - Request metrics are in-process and should eventually be shipped to durable monitoring.
-- Role-based permissions are not implemented yet.
+- Role-based permissions have a backend scaffold for sensitive routes, but full workspace membership management and UI role affordances are not implemented yet.
 - External integrations such as POS, WhatsApp, invoice OCR, and supplier portals are intentionally out of scope.
 - The single-document workspace model is excellent for capstone/demo deployment, but high-volume production usage would require a more granular storage design.
 - Git history is functional, but a stronger team-engineering story would use issues, branches, pull requests, and review notes.
