@@ -532,7 +532,7 @@ function invalidationPathsForMutation(path: string): string[] {
     return ["/api/ai/agents/runs", "/api/orders", "/api/ai/audit", "/api/ai/anomalies", "/api/ai/brief", "/api/notifications/orders", "/api/dashboard/summary"];
   }
   if (path === "/api/ai/scenario" || path === "/api/ai/chat") {
-    return [];
+    return ["/api/ai/audit", "/api/observability/metrics"];
   }
   return [path];
 }

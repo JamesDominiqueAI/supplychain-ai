@@ -84,6 +84,43 @@ class OpenAIReplenishmentNarrator:
             "total_tokens": total_tokens,
         }
 
+    def _response_text(self, response: Any) -> str:
+        output_text = getattr(response, "output_text", None)
+        if isinstance(output_text, str) and output_text.strip():
+            return output_text.strip()
+        if isinstance(response, dict):
+            output_text = response.get("output_text")
+            if isinstance(output_text, str) and output_text.strip():
+                return output_text.strip()
+            output_items = response.get("output") or []
+        else:
+            output_items = getattr(response, "output", None) or []
+
+        text_parts: list[str] = []
+        for item in output_items:
+            content_items = item.get("content", []) if isinstance(item, dict) else getattr(item, "content", []) or []
+            for content in content_items:
+                if isinstance(content, dict):
+                    text_value = content.get("text") or content.get("output_text")
+                else:
+                    text_value = getattr(content, "text", None) or getattr(content, "output_text", None)
+                if isinstance(text_value, str) and text_value.strip():
+                    text_parts.append(text_value.strip())
+        return "\n".join(text_parts).strip()
+
+    def _parse_json_payload(self, raw_text: str) -> dict[str, Any]:
+        try:
+            parsed = json.loads(raw_text)
+        except json.JSONDecodeError:
+            start = raw_text.find("{")
+            end = raw_text.rfind("}")
+            if start == -1 or end == -1 or end <= start:
+                raise
+            parsed = json.loads(raw_text[start:end + 1])
+        if not isinstance(parsed, dict):
+            raise ValueError("Structured AI response must be a JSON object.")
+        return parsed
+
     def _run_structured_response(
         self,
         *,
@@ -112,7 +149,8 @@ class OpenAIReplenishmentNarrator:
         try:
             response = client.responses.create(**request_kwargs)
             token_usage = self._token_usage_from_response(response)
-            if not getattr(response, "output_text", None):
+            raw_text = self._response_text(response)
+            if not raw_text:
                 self.last_audit_event = {
                     "feature": feature,
                     "used_ai": False,
@@ -124,7 +162,21 @@ class OpenAIReplenishmentNarrator:
                     **token_usage,
                 }
                 return None
-            parsed = json.loads(response.output_text)
+            try:
+                parsed = self._parse_json_payload(raw_text)
+            except Exception as exc:
+                logger.warning("OpenAI %s structured output parse failed: %s", feature, exc)
+                self.last_audit_event = {
+                    "feature": feature,
+                    "used_ai": False,
+                    "status": "fallback",
+                    "input_preview": input_preview[:240],
+                    "output_preview": raw_text[:240],
+                    "confidence": "low",
+                    "reason": f"Structured JSON parse fallback: {str(exc)[:180]}",
+                    **token_usage,
+                }
+                return None
             output_preview = (
                 parsed.get("summary")
                 or parsed.get("answer")

@@ -21,7 +21,7 @@ Every LLM feature asks for JSON with a strict shape:
 - `scenario`: `summary`, `recommended_skus`, `deferred_skus`, `confidence`.
 - `comparison`: `summary`, `changes`, `confidence`.
 
-The backend records each event in the AI audit log with feature name, AI usage, accepted/fallback/refused status, confidence, reason, preview fields, and token usage when the provider returns usage data.
+The backend records each event in the AI audit log with feature name, AI usage, accepted/fallback/refused status, confidence, reason, preview fields, and token usage when the provider returns usage data. Structured LLM responses are parsed from both the primary `output_text` field and nested response content, and parse fallbacks preserve the raw preview and token metadata so debugging is visible instead of disappearing into a generic error.
 
 ## Guardrails
 
@@ -44,7 +44,7 @@ The API exposes `GET /api/observability/metrics` for signed-in workspaces. It re
 
 Trade-off: request metrics are in-process and reset when the backend worker restarts. AI metrics are summarized from persistent workspace audit logs, so they survive restarts.
 
-The frontend exposes the same governance story in `/audit`. That page lists recent AI audit events with status, feature, reason/refusal text, input and output previews, confidence, token usage, and aggregate success/fallback/refusal rates. A strong demo path is to ask an off-topic chat question, show the refusal in the UI, then point to the persisted audit event.
+The frontend exposes the same governance story in `/audit`. That page lists recent AI audit events with status, feature, categorized reason/refusal text, input and output previews, confidence, token usage, and aggregate success/fallback/refusal rates. It also includes a "Create Refusal Demo" action that sends a prompt-injection style chat request through the normal API path, refreshes the audit metrics, and gives interviewers a concrete refused event to inspect.
 
 ## Evaluation
 

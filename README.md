@@ -138,7 +138,7 @@ The frontend discovers local APIs on ports `8010`, `8011`, and `8012` unless `NE
 - `/movements`: sale, purchase, and adjustment recording.
 - `/orders`: manual and AI-drafted purchase orders, status updates, and receiving.
 - `/reports`: replenishment reports, CSV export, cash scenarios, and report comparison.
-- `/audit`: AI decision trail with accepted, fallback, and refused events.
+- `/audit`: AI decision trail with accepted, fallback, and refused events, reason categories, fallback-rate callouts, and a one-click refusal demo for interviews.
 - `/suppliers`: supplier catalog and scorecards.
 - `/settings`: cash, AI, automation, notification, and critical-alert controls.
 
