@@ -92,7 +92,13 @@ AI improves:
 - report comparisons
 - multi-agent operations reviews
 
-The backend records accepted, fallback, and refused AI paths in an audit log. If AI is unavailable or unsafe, the product still works through deterministic fallback logic.
+The backend records accepted, fallback, and refused AI paths in an audit log. The frontend exposes this in `/audit`, where an interviewer can inspect status, feature, reason/refusal text, input and output previews, confidence, token usage, refusal rate, fallback rate, and feature counts.
+
+Concrete demo example:
+
+1. Ask the workspace chat an off-topic prompt such as “Write a poem about the weather.”
+2. The backend refuses it because the assistant only handles operations topics.
+3. `/audit` shows the event as `refused`, records that AI was not used, displays the input preview, and shows the refusal reason.
 
 ## 6. Agent Team
 
@@ -161,6 +167,7 @@ UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/evalu
 
 - Authenticated workspace instead of a static demo.
 - User-facing workflows for catalog, movements, orders, reports, suppliers, and settings.
+- Dedicated `/audit` page for accepted, fallback, and refused AI decisions.
 - Actual purchase-order lifecycle, including receiving and late-order state.
 - Cash-aware replenishment instead of generic recommendations.
 - Supplier scorecards connected to order history.
@@ -178,13 +185,18 @@ UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/evalu
 - Role-based permissions are not implemented yet.
 - External integrations such as POS, WhatsApp, invoice OCR, and supplier portals are intentionally out of scope.
 - The single-document workspace model is excellent for capstone/demo deployment, but high-volume production usage would require a more granular storage design.
+- Git history is functional, but a stronger team-engineering story would use issues, branches, pull requests, and review notes.
 
 ## 11. Recommended Next Steps
 
 1. Add durable request metrics through CloudWatch custom metrics or an observability platform.
 2. Convert replenishment and agent jobs to an SQS-backed worker path.
 3. Add role-based permissions for owner, manager, and purchasing roles.
-4. Add CSV import for products and movements.
-5. Expand E2E coverage for settings, report comparison, and supplier scorecards.
-6. Add a demo data reset command for presentations.
-7. Expand CI/CD documentation with screenshots of successful GitHub Actions runs and rollback examples.
+4. Add a retrieval layer for workspace chat using embeddings over past reports, supplier history, and order events.
+5. Migrate large workspaces from the single-document model to a DynamoDB multi-item model with keys such as `PK=WORKSPACE#{owner_user_id}` and `SK=ENTITY#{type}#{id}` plus GSIs for entity type, created date, and supplier/product lookups.
+6. Add CSV import for products and movements.
+7. Expand E2E coverage for settings, report comparison, supplier scorecards, and the audit page.
+8. Add a demo data reset command for presentations.
+9. Use self-authored pull requests with descriptions to show code review discipline.
+
+The detailed hardening roadmap lives in `guides/10_capstone_hardening.md`.

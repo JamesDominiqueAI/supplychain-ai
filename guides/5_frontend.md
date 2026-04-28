@@ -24,6 +24,10 @@ Operators can place manual orders, review AI-drafted orders, update order status
 
 Operators can run replenishment analysis, review recommendation history, export CSV reports, compare reports, test cash scenarios, and inspect AI audit events.
 
+### `/audit`
+
+Operators can inspect accepted, fallback, and refused AI decisions with reasons, previews, confidence, token usage, feature counts, and refusal/fallback rates. This is the clearest screen for demonstrating AI governance in interviews.
+
 ### `/suppliers`
 
 Operators can add suppliers and review scorecards with reliability, open orders, delayed orders, fill rate, delay days, and exposure.

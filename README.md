@@ -25,6 +25,7 @@ The app helps teams:
 - deterministic forecasting, inventory health, replenishment, supplier scorecards, anomalies, and cash logic
 - guarded AI chat, morning brief, report comparison, scenario analysis, and separated multi-agent operations runs
 - draft-first AI auto-orders and order notification events
+- dedicated AI audit page with accepted/fallback/refused decisions, reasons, previews, token usage, and observability metrics
 - observability endpoint and deterministic evaluation script
 - Terraform for DynamoDB, Lambda/API Gateway, S3/CloudFront, CloudWatch, and SNS
 - static frontend deployment path and Lambda packaging script
@@ -84,6 +85,7 @@ Agent guardrails:
 - Frontend: Next.js Pages Router, React, TypeScript, Clerk
 - Backend API: FastAPI, Pydantic, Mangum
 - Storage: DynamoDB in production, local JSON fallback in development/test
+- LLM: OpenAI `gpt-5-nano` by default through `OPENAI_MODEL`
 - AI: OpenAI-compatible provider calls with deterministic fallback paths
 - Notifications: Resend-compatible email adapter and persisted notification events
 - Infrastructure: Terraform, Lambda, API Gateway, S3, CloudFront, CloudWatch, SNS
@@ -129,6 +131,17 @@ npm run dev
 
 The frontend discovers local APIs on ports `8010`, `8011`, and `8012` unless `NEXT_PUBLIC_API_URL` is configured.
 
+## Workspace Screens
+
+- `/dashboard`: inventory risk, forecasts, anomalies, morning brief, AI chat, and agent controls.
+- `/products`: product catalog and stock-driving product fields.
+- `/movements`: sale, purchase, and adjustment recording.
+- `/orders`: manual and AI-drafted purchase orders, status updates, and receiving.
+- `/reports`: replenishment reports, CSV export, cash scenarios, and report comparison.
+- `/audit`: AI decision trail with accepted, fallback, and refused events.
+- `/suppliers`: supplier catalog and scorecards.
+- `/settings`: cash, AI, automation, notification, and critical-alert controls.
+
 ## Docker
 
 Run the full app with Docker Compose:
@@ -167,6 +180,8 @@ GET /api/observability/metrics
 ```
 
 See [guides/8_ai_observability_evaluation.md](guides/8_ai_observability_evaluation.md) for guardrails, metrics, and evaluation details.
+
+See [guides/10_capstone_hardening.md](guides/10_capstone_hardening.md) for the scaling and interview-readiness roadmap: AI audit demos, SQS workers, RBAC, RAG/vector retrieval, DynamoDB multi-item migration, and PR discipline.
 
 ## Frontend Build And E2E
 

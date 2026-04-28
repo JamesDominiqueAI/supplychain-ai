@@ -42,6 +42,8 @@ The API exposes `GET /api/observability/metrics` for signed-in workspaces. It re
 
 Trade-off: request metrics are in-process and reset when the backend worker restarts. AI metrics are summarized from persistent workspace audit logs, so they survive restarts.
 
+The frontend exposes the same governance story in `/audit`. That page lists recent AI audit events with status, feature, reason/refusal text, input and output previews, confidence, token usage, and aggregate success/fallback/refusal rates. A strong demo path is to ask an off-topic chat question, show the refusal in the UI, then point to the persisted audit event.
+
 ## Evaluation
 
 Run the deterministic evaluation script:

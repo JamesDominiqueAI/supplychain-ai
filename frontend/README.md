@@ -9,6 +9,7 @@ Implemented pages:
 - `/movements`
 - `/orders`
 - `/reports`
+- `/audit`
 - `/suppliers`
 - `/settings`
 - `/login`
