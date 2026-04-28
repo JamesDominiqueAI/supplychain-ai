@@ -15,6 +15,8 @@ The product helps an owner answer practical daily questions:
 
 The current repository is more than a concept. It includes a working frontend, backend API, local and cloud storage strategy, AI guardrails, deterministic evaluation scenarios, browser workflow tests, AWS infrastructure, deployment scripts, and operational documentation.
 
+For live demos, run `scripts/seed_demo.py --reset` to create a predictable workspace with products, suppliers, movements, a replenishment report, an operations-agent run, and an off-topic refusal that appears in `/audit`.
+
 ## 2. Target Users
 
 - Owner: wants clear decisions, cash awareness, and plain-language summaries.
@@ -67,6 +69,13 @@ Cloud:
 - CloudWatch dashboard and alarms
 - SNS alert topic
 
+Architecture tradeoffs:
+
+- The single-document workspace model is simple and demo-friendly, but it should migrate before production-scale event history because DynamoDB items are limited to roughly 400 KB.
+- The production migration path is a multi-item DynamoDB model using `PK=WORKSPACE#{owner_user_id}` and typed `SK` values for products, movements, orders, reports, and AI audit events.
+- Replenishment and agent runs execute inline today, while `backend/api/worker_handler.py` demonstrates the SQS worker handoff pattern for production hardening.
+- Chat uses the current structured workspace snapshot today; a RAG layer over historical reports, supplier events, and audit summaries is the natural next step.
+
 ## 5. AI Design
 
 The strongest design choice is that AI is not the system of record.
@@ -99,6 +108,8 @@ Concrete demo example:
 1. Ask the workspace chat an off-topic prompt such as “Write a poem about the weather.”
 2. The backend refuses it because the assistant only handles operations topics.
 3. `/audit` shows the event as `refused`, records that AI was not used, displays the input preview, and shows the refusal reason.
+
+Safety hardening note: current guardrails cover topic boundaries and unsupported external actions. A next hardening layer should add explicit prompt-injection and policy-bypass tests, for example prompts that ask the assistant to ignore inventory rules, reveal hidden system instructions, or claim supplier contact anyway.
 
 ## 6. Agent Team
 
@@ -162,6 +173,13 @@ Run it with:
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/evaluate_project.py
 ```
+
+Example metrics to show during a review:
+
+- AI success/fallback/refusal rates from `/api/observability/metrics`.
+- p95 API latency from the in-process request metrics.
+- token totals from AI audit events.
+- feature counts showing which AI surfaces are active.
 
 ## 9. What Makes It Feel Real
 

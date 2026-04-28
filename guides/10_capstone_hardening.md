@@ -26,6 +26,7 @@ Current state:
 - Replenishment jobs and agent runs execute inline in the API.
 - The API still persists job records, report records, agent runs, and audit logs, so the user experience behaves like a job-based workflow.
 - Terraform has a reserved `3_agents` phase for queues and worker infrastructure.
+- `backend/api/worker_handler.py` provides an SQS-style worker stub that processes `replenishment` and `operations_agent` messages with the same domain methods used by the API.
 
 Why this matters:
 

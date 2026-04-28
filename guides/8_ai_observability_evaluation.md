@@ -33,6 +33,8 @@ The backend records each event in the AI audit log with feature name, AI usage, 
 - Agent boundary: agents are restricted to internal tools. Scheduled agents are disabled by default and require explicit owner/workspace configuration.
 - Auditability: prompts and responses are not fully stored, but short previews, reasons, confidence, status, and token counts are logged for traceability.
 
+Prompt-injection hardening is the next guardrail layer. The current tests cover topic and unsupported-action refusal; future tests should include attempts to override system instructions, request hidden prompts, bypass the operations-only topic boundary, or force the assistant to claim an external supplier/payment action.
+
 ## Observability
 
 The API exposes `GET /api/observability/metrics` for signed-in workspaces. It returns:

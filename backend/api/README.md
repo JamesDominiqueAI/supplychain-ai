@@ -9,6 +9,7 @@ Implemented responsibilities:
 - workspace, product, supplier, inventory, order, report, AI, agent, notification, and observability routes
 - request latency/error metrics middleware
 - Lambda adapter in `lambda_handler.py`
+- SQS-style async worker stub in `worker_handler.py`
 - Lambda package script
 
 Local development:

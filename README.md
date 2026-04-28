@@ -163,6 +163,32 @@ docker compose logs -f backend
 docker compose logs -f frontend
 ```
 
+## Demo Workspace
+
+Seed or reset a deterministic local demo workspace:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/seed_demo.py --reset
+```
+
+The script creates a report, runs the operations agent, and records an off-topic chat refusal so `/audit` has a concrete governance example to show in interviews.
+
+Suggested screenshots for a portfolio README or presentation:
+
+- `/dashboard`: inventory risk, forecasts, anomalies, and agent review.
+- `/reports`: replenishment report, cash scenario, and report comparison.
+- `/orders`: draft-first AI or manual purchase-order lifecycle.
+- `/audit`: refused chat event with reason and token/metric summary.
+- `/suppliers`: supplier scorecards and delay exposure.
+
+## Architecture Tradeoffs
+
+- **Single-document workspace:** The current DynamoDB store keeps one workspace document per `owner_user_id`, which is ideal for capstone speed, tenant isolation, local JSON fallback, and deterministic demos. It should migrate before high-volume usage because DynamoDB items are limited to roughly 400 KB and movement/order/audit history will grow quickly.
+- **Multi-item migration path:** A production table should use keys such as `PK=WORKSPACE#{owner_user_id}` and `SK=PRODUCT#{product_id}`, `SK=MOVEMENT#{created_at}#{movement_id}`, `SK=ORDER#{created_at}#{order_id}`, `SK=REPORT#{generated_at}#{report_id}`, and `SK=AI_AUDIT#{created_at}#{audit_id}` with GSIs for entity type, product history, supplier exposure, and created date.
+- **Inline jobs today, queued jobs next:** Replenishment and agent workflows run inline for the MVP. `backend/api/worker_handler.py` documents the SQS-style worker path so production can move to API job creation, SQS handoff, worker Lambda execution, and frontend polling.
+- **Guardrails today, adversarial testing next:** Topic and unsupported-action guardrails are implemented and tested. Prompt-injection and policy-bypass test suites are the next safety layer.
+- **Snapshot chat today, retrieval next:** Workspace chat uses current structured state. A RAG upgrade should embed past reports, supplier history, late orders, and audit summaries so the model retrieves relevant long-term context instead of relying on a large workspace snapshot.
+
 ## Evaluation And Observability
 
 Run deterministic evaluation scenarios:
@@ -182,6 +208,31 @@ GET /api/observability/metrics
 See [guides/8_ai_observability_evaluation.md](guides/8_ai_observability_evaluation.md) for guardrails, metrics, and evaluation details.
 
 See [guides/10_capstone_hardening.md](guides/10_capstone_hardening.md) for the scaling and interview-readiness roadmap: AI audit demos, SQS workers, RBAC, RAG/vector retrieval, DynamoDB multi-item migration, and PR discipline.
+
+Example observability shape:
+
+```json
+{
+  "requests": {
+    "total_requests": 128,
+    "error_rate": 0.01,
+    "p95_latency_ms": 185.4
+  },
+  "ai": {
+    "success_rate": 0.72,
+    "fallback_rate": 0.18,
+    "refusal_rate": 0.10,
+    "feature_counts": {
+      "chat": 14,
+      "report": 5,
+      "agent": 3
+    },
+    "token_usage": {
+      "total_tokens": 8420
+    }
+  }
+}
+```
 
 ## Frontend Build And E2E
 
