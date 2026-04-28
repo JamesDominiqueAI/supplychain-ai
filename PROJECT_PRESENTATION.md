@@ -167,6 +167,7 @@ UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python scripts/evalu
 - Guarded AI with refusal and fallback behavior.
 - Audit logs and observability endpoint.
 - AWS infrastructure and deploy scripts.
+- Docker Compose local runtime.
 - Deterministic evaluation and E2E workflow tests.
 - Documentation now describes the implemented system rather than only future ideas.
 

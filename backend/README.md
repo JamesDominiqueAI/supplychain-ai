@@ -14,6 +14,13 @@ Local API:
 UV_CACHE_DIR=/tmp/uv-cache uv run --package supplychain-api python backend/api/main.py
 ```
 
+Docker image:
+
+```bash
+docker build -f backend/Dockerfile -t supplychain-ai-backend .
+docker run --rm -p 8010:8010 supplychain-ai-backend
+```
+
 Project evaluation:
 
 ```bash

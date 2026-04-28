@@ -129,6 +129,27 @@ npm run dev
 
 The frontend discovers local APIs on ports `8010`, `8011`, and `8012` unless `NEXT_PUBLIC_API_URL` is configured.
 
+## Docker
+
+Run the full app with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Then open `http://localhost:3000`. The backend is available at `http://localhost:8010`.
+
+Docker defaults to local JSON workspace storage and persists it in the `backend-workspaces` volume. A local `.env` file is optional; when present, Compose passes server-side values into the backend and passes only public `NEXT_PUBLIC_*` values into the frontend. For the authenticated workspace experience, set Clerk values such as `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_ISSUER`, and `CLERK_JWKS_URL`.
+
+Useful commands:
+
+```bash
+docker compose down
+docker compose down --volumes
+docker compose logs -f backend
+docker compose logs -f frontend
+```
+
 ## Evaluation And Observability
 
 Run deterministic evaluation scenarios:
