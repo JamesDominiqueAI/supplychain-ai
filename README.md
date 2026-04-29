@@ -1,5 +1,8 @@
 # SupplyChain AI
 
+[![Production](https://img.shields.io/badge/production-live-2ea44f?style=for-the-badge&logo=amazoncloudwatch&logoColor=white)](https://d3s6kuid14g7p7.cloudfront.net/)
+[![CI/CD](https://img.shields.io/github/actions/workflow/status/JamesDominiqueAI/supplychain-ai/ci-cd.yml?branch=main&label=CI%2FCD&style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/JamesDominiqueAI/supplychain-ai/actions/workflows/ci-cd.yml)
+
 SupplyChain AI is a cloud-ready inventory intelligence workspace for small businesses that need sharper purchasing decisions without buying a full ERP system.
 
 It turns everyday inventory records into an operations cockpit: stock movements become risk signals, supplier delays become visible, replenishment plans become cash-aware, and AI agents explain what needs attention before the business runs out of critical materials.
